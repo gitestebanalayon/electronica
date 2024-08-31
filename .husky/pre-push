@@ -1,0 +1,24 @@
+# #!/usr/bin/env sh
+
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo "${BLUE}RUNNING PRE-PUSH LINT VALIDATIONS${NC}\n"
+
+# Ejecutar lint y detenerse si falla
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "${RED}LINT VALIDATIONS FAILED!${NC}\n"
+  exit 1
+fi
+
+# Descomentar si se desea  incluir el chequeo de tipos
+# echo "${BLUE}RUNNING PRE-PUSH TYPECHECK VALIDATIONS${NC}\n"
+# npm run typecheck
+# if [ $? -ne 0 ]; then
+#   echo "${RED}TYPECHECK VALIDATIONS FAILED!${NC}\n"
+#   exit 1
+# fi
+
+echo "${GREEN}PRE-PUSH VALIDATIONS FINISHED SUCCESFULLY!${NC}\n"
