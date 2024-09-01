@@ -2,19 +2,23 @@ import {
   ConflictException,
   HttpStatus,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
   UseFilters,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, ILike, Repository } from 'typeorm';
 import Modules from './entities/modules.entity';
-import { CreateModuleDto, DeleteModuleDto } from './dto/create-module.dto';
+import { CreateModuleDto } from './dto/create-module.dto';
 import {
   AllExceptionsFilter,
   AllResponseFilter,
 } from 'src/core/errors/all-exceptions.filter';
 import { validationMessageModules } from 'src/common/constants';
+import {
+  FilterModuleDto,
+  ResponseModulesTableDto,
+} from './dto/filter-module.dto';
+import { UpdateModuleDto } from './dto/update-module.dto';
 // import { promises } from 'dns';
 
 @Injectable()
@@ -28,14 +32,14 @@ export class ModulesService {
   async create(data: CreateModuleDto): Promise<AllResponseFilter> {
     let messageErrorModule: string;
 
-    const existingUsers = await this.modulesRepository.findOne({
+    const existingModule = await this.modulesRepository.findOne({
       where: [{ name: data.name }, { path: data.path }],
     });
 
-    if (existingUsers) {
-      if (existingUsers.name === data.name) {
+    if (existingModule) {
+      if (existingModule.name === data.name) {
         messageErrorModule = validationMessageModules.CREATE_CONFLICT.NAME;
-      } else if (existingUsers.path === data.path) {
+      } else if (existingModule.path === data.path) {
         messageErrorModule = validationMessageModules.CREATE_CONFLICT.PATH;
       }
       throw new ConflictException(messageErrorModule);
@@ -68,55 +72,128 @@ export class ModulesService {
       statusCode: HttpStatus.CREATED,
       message: validationMessageModules.CREATED,
       timestamp: new Date().toISOString(),
-      path: `/api/v1/profiles`,
+      path: `/api/v1/modules`,
       data: savedModule,
     };
   }
 
-  async findAll(): Promise<Modules[]> {
-    return this.modulesRepository.find({
-      // relations: {
-      //   idSubModules: true,
-      // },
+  @UseFilters(AllExceptionsFilter)
+  async findTable(query: FilterModuleDto): Promise<ResponseModulesTableDto> {
+    let take = Number(query.take);
+    const page = Number(query.page) || 1; // Establecer el valor por defecto de page en 1
+
+    take = Math.max(1, take || 5); // Asegurar que take sea al menos 1
+
+    const skip = (Math.max(1, page || 1) - 1) * take;
+
+    const where: FindOptionsWhere<Modules> = {
+      isDelete: false,
+    };
+
+    if (query.name) {
+      where.name = ILike(`%${query.name}%`); // Filtrar por email
+    }
+
+    const [data, totalData] = await this.modulesRepository.findAndCount({
+      where,
+      take,
+      skip,
+      order: { id: 'ASC' }, // Ordenar por Id
     });
+
+    const totalPages = Math.ceil(totalData / take);
+
+    if (data.length === 0) {
+      throw new NotFoundException(validationMessageModules.NOT_CONTENT.MODULES);
+    }
+
+    return { data, totalData, totalPages, currentPage: page };
   }
 
-  async findOne(id: number): Promise<Modules> {
-    const module = await this.modulesRepository.findOne({
-      where: { id },
-      // relations: {
-      //   idSubModules: true,
+  @UseFilters(AllExceptionsFilter)
+  async findOne(id: number): Promise<Modules | AllResponseFilter> {
+    const module = await this.modulesRepository.findOneBy({ id });
 
-      // },
+    if (!module) {
+      throw new NotFoundException(validationMessageModules.NOT_CONTENT.MODULE);
+    }
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: validationMessageModules.OK.CONTENT,
+      timestamp: new Date().toISOString(),
+      path: `/api/v1/modules/${id}`,
+      data: module,
+    };
+  }
+
+  @UseFilters(AllExceptionsFilter)
+  async update(
+    id: number,
+    data: UpdateModuleDto,
+  ): Promise<Modules | AllResponseFilter> {
+    const module = await this.modulesRepository.findOneBy({
+      id,
     });
 
     if (!module) {
-      throw new NotFoundException(`Modulo con ID ${id} no encontrado`);
+      throw new NotFoundException(validationMessageModules.NOT_CONTENT.MODULE);
     }
 
-    return module;
+    Object.assign(module, data);
+
+    try {
+      await this.modulesRepository.save(module);
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: validationMessageModules.OK.UPDATE,
+        timestamp: new Date().toISOString(),
+        path: `/api/v1/modules/${id}`,
+        data: await this.modulesRepository.findOneBy({ id }),
+      };
+    } catch (error) {
+      switch (error.length) {
+        case 231:
+          throw new ConflictException(
+            'El nombre del módulo ya se encuentra en uso con otro permiso, por favor intenta otro nombre',
+          );
+      }
+    }
   }
 
-  async remove(id: number): Promise<DeleteModuleDto> {
-    try {
-      const modules = await this.modulesRepository.findOne({
-        where: { id: id },
-      });
+  // Eliminar nuevo
+  @UseFilters(AllExceptionsFilter)
+  async delete(id: number): Promise<Modules | AllResponseFilter> {
+    const existingPermission = await this.modulesRepository.findOneBy({
+      id,
+    });
 
-      if (!modules) {
-        throw new NotFoundException(`Modulo con ID ${id} no encontrado`);
-      }
+    if (!existingPermission) {
+      throw new NotFoundException(validationMessageModules.NOT_CONTENT.MODULE);
+    }
 
-      await this.modulesRepository.delete(modules);
-      return new DeleteModuleDto(modules.id);
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      } else {
-        throw new InternalServerErrorException(
-          `Error al eliminar el modulo con ID ${id}: ${error.message}`,
-        );
-      }
+    const isDelete = !existingPermission.isDelete;
+    await this.modulesRepository.update(id, {
+      isDelete: isDelete,
+    });
+
+    if (isDelete) {
+      return {
+        statusCode: HttpStatus.OK,
+        message: validationMessageModules.OK.DELETE,
+        timestamp: new Date().toISOString(),
+        path: `/api/v1/modules/${id}`,
+        data: { isDelete }, // Retornar el nuevo valor de isDelete
+      };
+    } else {
+      return {
+        statusCode: HttpStatus.OK,
+        message: validationMessageModules.OK.RESTORE,
+        timestamp: new Date().toISOString(),
+        path: `/api/v1/modules/${id}`,
+        data: { isDelete }, // Retornar el nuevo valor de isDelete
+      };
     }
   }
 }

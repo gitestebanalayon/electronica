@@ -35,5 +35,5 @@ export const setupSwagger = async (app: INestApplication): Promise<void> => {
     customSiteTitle: swaggerConfig.siteTitle,
   };
 
-  SwaggerModule.setup('docs', app, document, customOptions);
+  SwaggerModule.setup('api-swagger', app, document, customOptions);
 };
