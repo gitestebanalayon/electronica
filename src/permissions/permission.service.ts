@@ -118,40 +118,33 @@ export class PermissionsService {
     id: number,
     data: UpdatePermissionDto,
   ): Promise<Permissions | AllResponseFilter> {
-    const existingPermission = await this.permissionRepository.findOneBy({
+    const permission = await this.permissionRepository.findOneBy({
       id,
     });
 
-    if (!existingPermission) {
+    if (!permission) {
       throw new NotFoundException(
         validationMessagePermissions.NOT_CONTENT.PERMISSION,
       );
     }
 
+    Object.assign(permission, data);
+
     try {
-      const verifyUpdate = await this.permissionRepository.update(id, data);
-      if (verifyUpdate.affected >= 1) {
-        return {
-          statusCode: HttpStatus.OK,
-          message: validationMessagePermissions.OK.UPDATE,
-          timestamp: new Date().toISOString(),
-          path: `/api/v1/profiles/${id}`,
-          data: await this.permissionRepository.findOneBy({ id }),
-        };
-      }
+      await this.permissionRepository.save(permission);
 
       return {
-        statusCode: HttpStatus.NOT_MODIFIED,
-        message: validationMessagePermissions.NOT_MODIFIED.UPDATE,
+        statusCode: HttpStatus.OK,
+        message: validationMessagePermissions.OK.UPDATE,
         timestamp: new Date().toISOString(),
         path: `/api/v1/profiles/${id}`,
-        data: null,
+        data: await this.permissionRepository.findOneBy({ id }),
       };
     } catch (error) {
       switch (error.length) {
         case 237:
           throw new ConflictException(
-            'El nombre del permiso ya se encuentra en uso con otro permiso, por favor intenta con otro nombre',
+            'El nombre del permiso ya se encuentra en uso con otro permiso, por favor intenta otro nombre',
           );
       }
     }

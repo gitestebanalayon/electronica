@@ -1,4 +1,11 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import ProfilesModules from '../../database/entitysExternals/profilesModules.entity';
 import ProfilesPermissions from '../../database/entitysExternals/profilesPermissions.entity';
 import Users from 'src/users/entities/users.entity';
@@ -31,4 +38,10 @@ export default class Profiles {
 
   @OneToMany(() => Users, (user) => user.profile, { nullable: true })
   users: Users[];
+
+  @CreateDateColumn({ type: 'timestamp', name: 'createdAt' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamp', name: 'updatedAt' })
+  updatedAt: Date;
 }

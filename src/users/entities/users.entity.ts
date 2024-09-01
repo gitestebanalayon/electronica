@@ -1,9 +1,11 @@
 import {
   Column,
+  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 import Profiles from '../../profiles/entities/profiles.entity';
@@ -40,10 +42,16 @@ export default class Users {
   @Column('boolean', { name: 'isDelete', default: false })
   isDelete: boolean;
 
-  @Column('varchar', { name: 'birthdate', length: 10 })
-  birthdate: string;
+  @Column('date', { name: 'birthdate' })
+  birthdate: Date;
 
   @ManyToOne(() => Profiles, (profile) => profile.users, { nullable: true })
   @JoinColumn([{ name: 'profileId', referencedColumnName: 'id' }])
   profile: Profiles;
+
+  @CreateDateColumn({ type: 'timestamp', name: 'createdAt' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamp', name: 'updatedAt' })
+  updatedAt: Date;
 }

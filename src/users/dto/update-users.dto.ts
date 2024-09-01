@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 
 export class UpdateUserDto {
-  @ApiProperty({ example: 'test@gmail.com' })
+  @ApiProperty({ example: 'root@gmail.com' })
   @IsEmail()
   @IsOptional()
   email?: string;
@@ -19,12 +19,12 @@ export class UpdateUserDto {
   @IsOptional()
   nationality?: string;
 
-  @ApiProperty({ example: 28314770 })
+  @ApiProperty({ example: 27498161 })
   @IsInt({ message: 'ci debe ser de tipo entero' })
   @IsOptional()
   ci?: number;
 
-  @ApiProperty({ example: '04123917375' })
+  @ApiProperty({ example: '04127116352' })
   @IsString({ message: 'phone debe ser de tipo cadena' })
   @Length(11, 11, { message: 'phone debe contener 11 dígitos' })
   @IsOptional()
@@ -35,12 +35,12 @@ export class UpdateUserDto {
   @IsOptional()
   failedAttempts?: number;
 
-  @ApiProperty()
+  @ApiProperty({ example: true })
   @IsBoolean({ message: 'isActive debe ser de tipo boleano' })
   @IsOptional()
   isActive?: boolean;
 
-  @ApiProperty({ example: '2000-08-01' })
+  @ApiProperty({ example: '2000-08-25' })
   @IsString({ message: 'birthdate debe ser de tipo cadena' })
   @IsOptional()
   birthdate?: string;

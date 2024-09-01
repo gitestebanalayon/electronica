@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsBoolean,
+  IsDateString,
   IsEmail,
   IsInt,
   IsNotEmpty,
@@ -9,10 +10,8 @@ import {
   Length,
 } from 'class-validator';
 
-import { ProfilesDTO } from 'src/profiles/dto/create-profile.dto';
-
 export class CreateUserDto {
-  @ApiProperty({ example: 'test@gmail.com' })
+  @ApiProperty({ example: 'root@gmail.com' })
   @IsEmail()
   @IsNotEmpty()
   email: string;
@@ -27,13 +26,11 @@ export class CreateUserDto {
   @IsString()
   nationality: string;
 
-  @ApiProperty({
-    example: 28314770,
-  })
+  @ApiProperty({ example: 27498161 })
   @IsInt()
   ci: number;
 
-  @ApiProperty({ example: '04123917375' })
+  @ApiProperty({ example: '04127116352' })
   @IsString()
   @Length(11, 11)
   phone: string;
@@ -42,13 +39,13 @@ export class CreateUserDto {
   @IsNumber()
   failedAttempts: number;
 
+  @ApiProperty({ example: true })
   @IsBoolean()
-  @ApiProperty()
   isActive: boolean;
 
-  @ApiProperty({ example: '2000-08-01' })
-  @IsString()
-  birthdate: string;
+  @ApiProperty({ example: '2000-08-25' })
+  @IsDateString()
+  birthdate: Date;
 
   @ApiProperty({ example: 1 })
   @IsNumber()
@@ -59,36 +56,4 @@ export class DeleteUserDto {
   @ApiProperty({ example: 1 })
   @IsNumber()
   id: number;
-}
-
-export class UserDto {
-  @ApiProperty({ example: 1 })
-  id: number;
-
-  @ApiProperty({ example: 'test@example.com' })
-  email: string;
-
-  @ApiProperty({ example: 'A' })
-  nationality: string;
-
-  @ApiProperty({ example: 'password123' })
-  password: string;
-
-  @ApiProperty({ example: '12345678' })
-  ci: number;
-
-  @ApiProperty({ example: '04123917375' })
-  phone: string;
-
-  @ApiProperty({ example: 0 })
-  failedAttempts: number;
-
-  @ApiProperty({ example: true })
-  isActive: boolean;
-
-  @ApiProperty({ example: '2000-01-01' })
-  birthdate: string;
-
-  @ApiProperty({ type: () => ProfilesDTO })
-  profile?: ProfilesDTO;
 }

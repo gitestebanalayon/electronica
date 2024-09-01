@@ -9,7 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
-import { CreateUserDto, UserDto } from './dto/create-users.dto';
+import { CreateUserDto } from './dto/create-users.dto';
 import { UpdateUserDto } from './dto/update-users.dto';
 import { UsersServices } from './users.service';
 import { FilterUserDto, ResponseUsersTableDto } from './dto/filter-user.dto';
@@ -56,14 +56,12 @@ export class UsuariosController {
   @Put('isActive/:id')
   async isActiveUser(
     @Param('id') id: number,
-  ): Promise<UserDto | AllResponseFilter> {
+  ): Promise<Users | AllResponseFilter> {
     return await this.usersServices.isActive(id);
   }
 
   @Put('isDelete/:id')
-  async isDelete(
-    @Param('id') id: number,
-  ): Promise<UserDto | AllResponseFilter> {
+  async isDelete(@Param('id') id: number): Promise<Users | AllResponseFilter> {
     return await this.usersServices.isDelete(id);
   }
 }

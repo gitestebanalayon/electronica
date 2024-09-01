@@ -115,38 +115,31 @@ export class ProfilesService {
     id: number,
     data: UpdateProfileDto,
   ): Promise<Profiles | AllResponseFilter> {
-    const existingProfile = await this.profilesRepository.findOneBy({ id });
+    const profile = await this.profilesRepository.findOneBy({ id });
 
-    if (!existingProfile) {
+    if (!profile) {
       throw new NotFoundException(
         validationMessageProfiles.NOT_CONTENT.PROFILE,
       );
     }
 
+    Object.assign(profile, data);
+
     try {
-      const verifyUpdate = await this.profilesRepository.update(id, data);
-      if (verifyUpdate.affected >= 1) {
-        return {
-          statusCode: HttpStatus.OK,
-          message: validationMessageProfiles.OK.UPDATE,
-          timestamp: new Date().toISOString(),
-          path: `/api/v1/profiles/${id}`,
-          data: await this.profilesRepository.findOneBy({ id }),
-        };
-      }
+      await this.profilesRepository.save(profile);
 
       return {
-        statusCode: HttpStatus.NOT_MODIFIED,
-        message: validationMessageProfiles.NOT_MODIFIED.UPDATE,
+        statusCode: HttpStatus.OK,
+        message: validationMessageProfiles.OK.UPDATE,
         timestamp: new Date().toISOString(),
         path: `/api/v1/profiles/${id}`,
-        data: null,
+        data: await this.profilesRepository.findOneBy({ id }),
       };
     } catch (error) {
       switch (error.length) {
-        case 236:
+        case 232:
           throw new ConflictException(
-            'El nombre del perfil ya se encuentra en uso con otro perfil, por favor intenta con otro nombre',
+            'El nombre del perfil ya se encuentra en uso con otro perfil, por favor intenta otro nombre',
           );
       }
     }

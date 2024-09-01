@@ -6,42 +6,53 @@ import {
   IsNumber,
   IsNotEmpty,
   IsPositive,
+  IsInt,
 } from 'class-validator';
 
 export class CreateModuleDto {
+  @ApiProperty({ example: 'Home', description: 'Nombre del módulo' })
   @IsString()
   @IsNotEmpty()
-  @ApiProperty({ description: 'Nombre del módulo' })
   name: string;
 
+  @ApiProperty({
+    example: 'Descripción de Home',
+    description: 'Descripción del módulo',
+  })
   @IsOptional()
   @IsString()
-  @ApiProperty({ description: 'Descripción del módulo' })
   description?: string;
 
+  @ApiProperty({ example: '/home', description: 'Ruta del módulo' })
   @IsString()
   @IsNotEmpty()
-  @ApiProperty({ description: 'Ruta del módulo' })
   path: string;
 
+  @ApiProperty({
+    example: 'icon-home',
+    description: 'Nombre del icono del módulo',
+  })
   @IsOptional()
   @IsString()
-  @ApiProperty({ description: 'Nombre del icono del módulo' })
   nameIcon?: string;
 
+  @ApiProperty({ example: true, description: 'Visibilidad o estado del menú ' })
   @IsBoolean()
-  @ApiProperty({ description: 'Visibilidad o estado del menú ' })
   isViewMenu: boolean;
 
+  @ApiProperty({ example: false, description: 'Indica si está seleccionado' })
   @IsBoolean()
-  @ApiProperty({ description: 'Indica si está seleccionado' })
   checked: boolean;
 
+  @ApiProperty({
+    example: null,
+    description: 'ID de los submódulos',
+    required: false,
+  })
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @IsPositive()
-  @ApiProperty({ description: 'ID de los submódulos', required: false })
-  idSubModules?: number; // Mantener ID como número
+  idSubModules?: number;
 }
 
 export class DeleteModuleDto {

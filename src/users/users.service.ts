@@ -186,25 +186,17 @@ export class UsersServices {
     Object.assign(user, data);
 
     try {
-      const result = await this.usersRepository.update(id, user);
-      if (result.affected >= 1) {
-        return {
-          statusCode: HttpStatus.OK,
-          message: validationMessageUsers.OK.UPDATE,
-          timestamp: new Date().toISOString(),
-          path: `/api/v1/users/${id}`,
-          data: await this.usersRepository.findOne({
-            where: { id },
-            relations: { profile: true },
-          }),
-        };
-      }
+      await this.usersRepository.save(user);
+
       return {
-        statusCode: HttpStatus.NOT_MODIFIED,
-        message: validationMessageUsers.NOT_MODIFIED.UPDATE, // Indicate no changes were made
+        statusCode: HttpStatus.OK,
+        message: validationMessageUsers.OK.UPDATE,
         timestamp: new Date().toISOString(),
         path: `/api/v1/users/${id}`,
-        data: null,
+        data: await this.usersRepository.findOne({
+          where: { id },
+          relations: { profile: true },
+        }),
       };
     } catch (error) {
       switch (error.length) {

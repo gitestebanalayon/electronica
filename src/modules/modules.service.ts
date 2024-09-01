@@ -1,12 +1,20 @@
 import {
+  ConflictException,
+  HttpStatus,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UseFilters,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Modules from './entities/modules.entity';
 import { CreateModuleDto, DeleteModuleDto } from './dto/create-module.dto';
+import {
+  AllExceptionsFilter,
+  AllResponseFilter,
+} from 'src/core/errors/all-exceptions.filter';
+import { validationMessageModules } from 'src/common/constants';
 // import { promises } from 'dns';
 
 @Injectable()
@@ -16,9 +24,24 @@ export class ModulesService {
     private readonly modulesRepository: Repository<Modules>,
   ) {}
 
-  async create(data: CreateModuleDto): Promise<Modules> {
-    const module = new Modules();
+  @UseFilters(AllExceptionsFilter)
+  async create(data: CreateModuleDto): Promise<AllResponseFilter> {
+    let messageErrorModule: string;
 
+    const existingUsers = await this.modulesRepository.findOne({
+      where: [{ name: data.name }, { path: data.path }],
+    });
+
+    if (existingUsers) {
+      if (existingUsers.name === data.name) {
+        messageErrorModule = validationMessageModules.CREATE_CONFLICT.NAME;
+      } else if (existingUsers.path === data.path) {
+        messageErrorModule = validationMessageModules.CREATE_CONFLICT.PATH;
+      }
+      throw new ConflictException(messageErrorModule);
+    }
+
+    const module = new Modules();
     module.name = data.name;
     module.description = data.description;
     module.path = data.path;
@@ -33,14 +56,21 @@ export class ModulesService {
       });
       if (!subModule) {
         throw new NotFoundException(
-          `Modulo con ID ${data.idSubModules} no encontrado`,
+          validationMessageModules.NOT_CONTENT.MODULE,
         );
       }
       module.idSubModules = subModule;
     }
 
-    // Guardar el nuevo módulo
-    return this.modulesRepository.save(module);
+    const savedModule = await this.modulesRepository.save(module);
+
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: validationMessageModules.CREATED,
+      timestamp: new Date().toISOString(),
+      path: `/api/v1/profiles`,
+      data: savedModule,
+    };
   }
 
   async findAll(): Promise<Modules[]> {

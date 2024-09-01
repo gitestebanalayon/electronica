@@ -1,9 +1,11 @@
 import {
   Column,
+  CreateDateColumn,
   Entity,
   Index,
   OneToMany,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 import PermissionsModules from '../../database/entitysExternals/permissionsModules.entity';
@@ -35,4 +37,10 @@ export default class Permissions {
     (profilesPermissions) => profilesPermissions.permissions,
   )
   profilesPermissions: ProfilesPermissions;
+
+  @CreateDateColumn({ type: 'timestamp', name: 'createdAt' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamp', name: 'updatedAt' })
+  updatedAt: Date;
 }

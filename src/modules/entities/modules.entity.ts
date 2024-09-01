@@ -1,11 +1,13 @@
 import {
   Column,
+  CreateDateColumn,
   Entity,
   Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 import ProfilesModules from '../../database/entitysExternals/profilesModules.entity';
@@ -35,22 +37,31 @@ export default class Modules {
   @Column('boolean', { name: 'checked', default: false })
   checked: boolean; // Indica si el módulo está marcado como seleccionado
 
-  @ManyToOne(() => Modules, (modules) => modules.modules)
+  @Column('boolean', { name: 'isDelete', default: false })
+  isDelete: boolean;
+
+  @ManyToOne(() => Modules, (modules) => modules.modules, { nullable: true })
   @JoinColumn([{ name: 'idSubModules', referencedColumnName: 'id' }])
   idSubModules: Modules; // Relación con submódulos
 
   @OneToMany(() => Modules, (modules) => modules.idSubModules)
-  modules: Modules[]; // Relación con módulos secundarios
+  modules: Modules; // Relación con módulos secundarios
 
   @OneToMany(
     () => PermissionsModules,
     (permissionsModules) => permissionsModules.modules,
   )
-  permissionsModules: PermissionsModules[]; // Relación con permisos
+  permissionsModules: PermissionsModules; // Relación con permisos
 
   @OneToMany(
     () => ProfilesModules,
     (profilesModules) => profilesModules.modules,
   )
-  profilesModules: ProfilesModules[]; // Relación con perfiles
+  profilesModules: ProfilesModules; // Relación con perfiles
+
+  @CreateDateColumn({ type: 'timestamp', name: 'createdAt' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamp', name: 'updatedAt' })
+  updatedAt: Date;
 }

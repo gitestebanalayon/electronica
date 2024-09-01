@@ -12,6 +12,7 @@ import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreateModuleDto } from './dto/create-module.dto';
 import Modules from './entities/modules.entity';
 import { ModulesService } from './modules.service';
+import { AllResponseFilter } from 'src/core/errors/all-exceptions.filter';
 
 @ApiTags('Modules')
 @Controller('modules')
@@ -25,7 +26,9 @@ export class ModulesController {
     type: Modules,
   })
   @ApiResponse({ status: 400, description: 'Error en la creación del módulo.' })
-  async create(@Body() data: CreateModuleDto): Promise<Modules> {
+  async create(
+    @Body() data: CreateModuleDto,
+  ): Promise<Modules | AllResponseFilter> {
     return await this.modulesService.create(data);
   }
 

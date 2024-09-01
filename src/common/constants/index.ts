@@ -1,5 +1,3 @@
-export const REQUEST_USER_KEY = 'user';
-
 export const validationMessageUsers = {
   // Mensages de validacion de tipo exito para los endpoints
   CREATED: 'Usuario creado exitosamente',
@@ -77,5 +75,32 @@ export const validationMessagePermissions = {
   NOT_MODIFIED: {
     UPDATE: 'Error al actualizar el permiso', // Para el endpoint de (PATH) para actualizar
     DELETE: 'Error al desactivar el permiso', // Para el endpoint de (PUT) para eliminar
+  },
+};
+
+export const validationMessageModules = {
+  // Mensages de validacion de tipo exito para los endpoints
+  CREATED: 'Módulo creado exitosamente',
+  OK: {
+    CONTENT: 'Módulo encontrado exitosamente',
+    UPDATE: 'Módulo actualizado exitosamente',
+    DELETE: 'Módulo eliminado exitosamente',
+    RESTORE: 'Módulo restaurado exitosamente',
+    ACTIVATE: 'Módulo activado exitosamente',
+    DEACTIVATE: 'Módulo desactivado exitosamente',
+  },
+
+  // Mensages de validacion de tipo error para los endpoints
+  CREATE_CONFLICT: {
+    NAME: 'El nombre del módulo ya existe',
+    PATH: 'El nombre de la ruta ya existe',
+  },
+  NOT_CONTENT: {
+    MODULE: 'El módulo no existe',
+    MODULES: 'No se ha encontrado ningun módulo en la base de datos',
+  },
+  NOT_MODIFIED: {
+    UPDATE: 'Error al actualizar el módulo', // Para el endpoint de (PATH) para actualizar
+    DELETE: 'Error al desactivar el módulo', // Para el endpoint de (PUT) para eliminar
   },
 };
