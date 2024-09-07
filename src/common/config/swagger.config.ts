@@ -5,7 +5,7 @@ export default registerAs('swagger', () => ({
   docTitle: process.env.SWAGGER_DOC_TITLE || 'API Documentation',
   docDescription: process.env.SWAGGER_DOC_DESCRIPTION || 'API Description',
   docVersion: process.env.SWAGGER_DOC_VERSION || '1.0',
-  serverUrl: process.env.SWAGGER_DOC_SERVER_URL || 'https://electronica-swagger-api-v2.up.railway.app',
+  serverUrl: process.env.SWAGGER_DOC_SERVER_URL || 'https://electronica-swagger-api-v3.up.railway.app',
   nameServerUrl:
     process.env.SWAGGER_DOC_NAME_SERVER_URL || 'Development Server',
 }));
