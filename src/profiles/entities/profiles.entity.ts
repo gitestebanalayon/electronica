@@ -10,7 +10,7 @@ import ProfilesModules from '../../database/entitysExternals/profilesModules.ent
 import ProfilesPermissions from '../../database/entitysExternals/profilesPermissions.entity';
 import Users from 'src/users/entities/users.entity';
 
-@Entity('profiles', { schema: 'security' })
+@Entity('profiles')
 export default class Profiles {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;

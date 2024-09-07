@@ -13,7 +13,7 @@ import Profiles from '../../profiles/entities/profiles.entity';
 @Index('UQ_profiles_permissions_unique', ['permissionsId', 'profilesId'], {
   unique: true,
 })
-@Entity('profiles_permissions', { schema: 'security' })
+@Entity('profiles_permissions')
 export default class ProfilesPermissions {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;

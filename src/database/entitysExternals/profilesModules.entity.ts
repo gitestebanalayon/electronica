@@ -10,7 +10,7 @@ import Modules from '../../modules/entities/modules.entity';
 import Profiles from '../../profiles/entities/profiles.entity';
 
 @Index('profiles_modules_pkey', ['id'], { unique: true })
-@Entity('profiles_modules', { schema: 'security' })
+@Entity('profiles_modules')
 export default class ProfilesModules {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;

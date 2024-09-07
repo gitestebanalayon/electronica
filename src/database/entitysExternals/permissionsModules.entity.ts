@@ -13,7 +13,7 @@ import Permissions from '../../permissions/entities/permissions.entity';
 @Index('UQ_permissions_modules_unique', ['modulesId', 'permissionsId'], {
   unique: true,
 })
-@Entity('permissions_modules', { schema: 'security' })
+@Entity('permissions_modules')
 export default class PermissionsModules {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;

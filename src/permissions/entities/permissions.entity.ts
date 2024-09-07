@@ -12,7 +12,7 @@ import PermissionsModules from '../../database/entitysExternals/permissionsModul
 import ProfilesPermissions from '../../database/entitysExternals/profilesPermissions.entity';
 
 @Index('permissions_pkey', ['id'], { unique: true })
-@Entity('permissions', { schema: 'security' })
+@Entity('permissions')
 export default class Permissions {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;

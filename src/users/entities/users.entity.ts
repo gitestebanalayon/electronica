@@ -11,7 +11,7 @@ import {
 import Profiles from '../../profiles/entities/profiles.entity';
 import { Exclude } from 'class-transformer';
 
-@Entity('users', { schema: 'security' })
+@Entity('users')
 export default class Users {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;
