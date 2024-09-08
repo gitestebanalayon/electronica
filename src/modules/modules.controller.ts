@@ -20,7 +20,7 @@ import {
 import { UpdateModuleDto } from './dto/update-module.dto';
 
 @ApiTags('Modules')
-@Controller('/api/v1/modules')
+@Controller('/modules')
 export class ModulesController {
   constructor(private readonly modulesService: ModulesService) {}
 

@@ -4,8 +4,8 @@ import { AppService } from './app.service';
 
 import { ApiOkResponse } from '@nestjs/swagger';
 
-@ApiTags('App')
-@Controller('api/v1')
+@ApiTags('app')
+@Controller('')
 export class AppController {
   constructor(private readonly appService: AppService) {}
 

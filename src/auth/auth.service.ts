@@ -1,9 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, UseFilters } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcryptjs from 'bcryptjs';
 import Users from '../users/entities/users.entity';
 import { UsersServices } from '../users/users.service';
 import { LoginDto } from './dto/login-auth.dto';
+import { AllExceptionsFilter } from 'src/core/errors/all-exceptions.filter';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +13,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
+  @UseFilters(AllExceptionsFilter)
   async login({
     email,
     password,

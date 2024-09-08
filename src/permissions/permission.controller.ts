@@ -20,7 +20,7 @@ import {
 } from './dto/filter-permission.dto';
 
 @ApiTags('Permissions')
-@Controller('/api/v1/permissions')
+@Controller('/permissions')
 export class PermisosController {
   constructor(private readonly permissionService: PermissionsService) {}
 

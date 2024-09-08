@@ -17,7 +17,7 @@ import Users from './entities/users.entity';
 import { AllResponseFilter } from 'src/core/errors/all-exceptions.filter';
 
 @ApiTags('Users')
-@Controller('/api/v1/users')
+@Controller('/users')
 export class UsuariosController {
   constructor(private readonly usersServices: UsersServices) {}
 

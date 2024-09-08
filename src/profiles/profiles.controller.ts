@@ -20,7 +20,7 @@ import {
 import { AllResponseFilter } from 'src/core/errors/all-exceptions.filter';
 
 @ApiTags('Profiles')
-@Controller('/api/v1/profiles')
+@Controller('/profiles')
 export class ProfilesController {
   constructor(private readonly profilesService: ProfilesService) {}
 

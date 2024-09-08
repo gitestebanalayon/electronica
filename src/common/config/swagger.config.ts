@@ -7,7 +7,7 @@ export default registerAs('swagger', () => ({
   docTitle: process.env.SWAGGER_DOC_TITLE || 'API Documentation',
   docDescription: process.env.SWAGGER_DOC_DESCRIPTION || 'API Description',
   docVersion: process.env.SWAGGER_DOC_VERSION || 'v1.0',
-  serverUrl: process.env.SWAGGER_DOC_SERVER_URL || 'http://localhost',
+  serverUrl: process.env.SWAGGER_DOC_SERVER_URL || 'http://localhost:8080',
   nameServerUrl:
     process.env.SWAGGER_DOC_NAME_SERVER_URL || 'Development Server',
 }));
