@@ -3,15 +3,16 @@ import { ApiTags } from '@nestjs/swagger';
 import { AppService } from './app.service';
 
 import { ApiOkResponse } from '@nestjs/swagger';
+import { AllResponseFilter } from './core/errors/all-exceptions.filter';
 
 @ApiTags('app')
 @Controller('')
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @ApiOkResponse({ description: "Returns 'Hello World'" })
+  @ApiOkResponse({ description: "¡Servicio disponible!" })
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  async getHello(): Promise<AllResponseFilter> {
+    return await this.appService.getHello();
   }
 }
