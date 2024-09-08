@@ -5,8 +5,8 @@ import { AppService } from './app.service';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { AllResponseFilter } from './core/errors/all-exceptions.filter';
 
-@ApiTags('app')
-@Controller('')
+@ApiTags('Service')
+@Controller('/service')
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
