@@ -18,14 +18,8 @@ export const validationMessageTypes = {
 
 // Mensages de errores del servidor
 export const validationMessageServer = {
-  INTERNAL_SERVER_ERROR: 'Error interno del servidor'
-}
-
-
-
-
-
-
+  INTERNAL_SERVER_ERROR: 'Error interno del servidor',
+};
 
 export const validationMessageUser = {
   OK: {
@@ -56,7 +50,6 @@ export const validationMessageUser = {
     USER: 'El usuario no existe',
     USERS: 'No hay usuarios',
   },
-
 };
 
 export const validationMessageGroup = {
@@ -82,7 +75,4 @@ export const validationMessageGroup = {
     GROUP: 'El grupo no existe',
     GROUPS: 'No hay grupos',
   },
-
 };
-
-

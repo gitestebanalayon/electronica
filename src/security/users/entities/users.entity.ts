@@ -57,8 +57,9 @@ export default class Users {
   @Column('boolean', { name: 'is_root', default: false })
   is_root: boolean;
 
-  @ManyToOne(() => Group, (group_description) => group_description.users, { nullable: true })
+  @ManyToOne(() => Group, (group_description) => group_description.users, {
+    nullable: true,
+  })
   @JoinColumn([{ name: 'group_description_id', referencedColumnName: 'id' }])
   group_description: Group;
-
 }

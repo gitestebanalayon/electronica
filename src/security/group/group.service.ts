@@ -5,6 +5,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  Req,
   UseFilters,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -22,6 +23,7 @@ import {
   AllResponseFilter,
 } from '../../core/errors/all-exceptions.filter';
 import GroupPermission from '../../database/entitysExternals/groupPermission.entity';
+import { Request } from 'express';
 
 @Injectable()
 export class GroupService {
@@ -30,12 +32,15 @@ export class GroupService {
     private readonly groupRepository: Repository<Group>,
     @InjectRepository(GroupPermission)
     private readonly groupPermissionRepository: Repository<GroupPermission>,
-  ) { }
+  ) {}
 
   //--------------------------
 
   @UseFilters(AllExceptionsFilter)
-  async create(data: CreateGroupDto): Promise<Group | AllResponseFilter> {
+  async create(
+    data: CreateGroupDto,
+    @Req() request: Request,
+  ): Promise<Group | AllResponseFilter> {
     const queryRunner =
       this.groupRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
@@ -48,9 +53,7 @@ export class GroupService {
       });
 
       if (existingActiveGroup) {
-        throw new ConflictException(
-          validationMessageGroup.CONFLICT.GROUP,
-        );
+        throw new ConflictException(validationMessageGroup.CONFLICT.GROUP);
       }
 
       // Crear nuevo group
@@ -64,7 +67,6 @@ export class GroupService {
       const permissionProfilesResults = await Promise.allSettled(
         data.groupPermission.map(async (element) => {
           // Intentar encontrar el permiso por ID
-
 
           // Crear la relación de group-permiso si el permiso existe
           return this.groupPermissionRepository.create({
@@ -91,7 +93,7 @@ export class GroupService {
         statusCode: HttpStatus.CREATED,
         message: validationMessageGroup.OK.CREATED,
         timestamp: new Date().toISOString(),
-        path: `/api/v1/group`,
+        path: request.url,
         data: newGroup,
       };
     } catch (error) {
@@ -147,7 +149,10 @@ export class GroupService {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async findOne(id: number): Promise<Group | AllResponseFilter> {
+  async findOne(
+    id: number,
+    @Req() request: Request,
+  ): Promise<Group | AllResponseFilter> {
     const group = await this.groupRepository.findOne({ where: { id } });
 
     if (!group) {
@@ -158,7 +163,7 @@ export class GroupService {
       statusCode: HttpStatus.OK,
       message: validationMessageGroup.OK.CONTENT,
       timestamp: new Date().toISOString(),
-      path: `/api/v1/group/${id}`,
+      path: request.url,
       data: group,
     };
   }
@@ -167,8 +172,10 @@ export class GroupService {
   async update(
     id: number,
     data: UpdateGroupDto,
+    @Req() request: Request,
   ): Promise<Group | AllResponseFilter> {
-    const queryRunner = this.groupRepository.manager.connection.createQueryRunner();
+    const queryRunner =
+      this.groupRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -195,9 +202,12 @@ export class GroupService {
       // Manejo de la relación one-to-many (groupPermission)
       if (data.groupPermission) {
         // Obtener los permisos actuales para este grupo
-        const currentPermissions = await queryRunner.manager.find(GroupPermission, {
-          where: { group_id: id },
-        });
+        const currentPermissions = await queryRunner.manager.find(
+          GroupPermission,
+          {
+            where: { group_id: id },
+          },
+        );
 
         // Generar un array con los nuevos permisos (con solo los campos necesarios)
         const newGroupPermissions = data.groupPermission.map((perm) => ({
@@ -207,12 +217,17 @@ export class GroupService {
 
         // Identificar permisos que deben eliminarse
         const permissionsToDelete = currentPermissions.filter(
-          (perm) => !newGroupPermissions.some((newPerm) => newPerm.group_id === perm.group_id),
+          (perm) =>
+            !newGroupPermissions.some(
+              (newPerm) => newPerm.group_id === perm.group_id,
+            ),
         );
 
         // Eliminar permisos antiguos no incluidos en los nuevos datos
         for (const permission of permissionsToDelete) {
-          await queryRunner.manager.delete(GroupPermission, { id: permission.id });
+          await queryRunner.manager.delete(GroupPermission, {
+            id: permission.id,
+          });
         }
 
         // Insertar nuevos permisos o actualizar los existentes
@@ -223,12 +238,16 @@ export class GroupService {
 
           if (existingPermission) {
             // Si el permiso ya existe, actualizamos los campos necesarios
-            await queryRunner.manager.update(GroupPermission, existingPermission.id, {
-              create: newPermission.create,
-              read: newPermission.read,
-              update: newPermission.update,
-              delete: newPermission.delete,
-            });
+            await queryRunner.manager.update(
+              GroupPermission,
+              existingPermission.id,
+              {
+                create: newPermission.create,
+                read: newPermission.read,
+                update: newPermission.update,
+                delete: newPermission.delete,
+              },
+            );
           } else {
             // Si el permiso no existe, insertarlo
             await queryRunner.manager.insert(GroupPermission, newPermission);
@@ -244,7 +263,7 @@ export class GroupService {
           statusCode: HttpStatus.OK,
           message: validationMessageGroup.OK.UPDATE,
           timestamp: new Date().toISOString(),
-          path: `/api/v1/group/${id}`,
+          path: request.url,
           data: group,
         };
       }
@@ -255,7 +274,7 @@ export class GroupService {
         statusCode: HttpStatus.NOT_MODIFIED,
         message: validationMessageGroup.NOT_OK.UPDATE,
         timestamp: new Date().toISOString(),
-        path: `/api/v1/group/${id}`,
+        path: request.url,
         data: null,
       };
     } catch (error) {
@@ -275,7 +294,10 @@ export class GroupService {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async delete(id: number): Promise<Group | AllResponseFilter> {
+  async delete(
+    id: number,
+    @Req() request: Request,
+  ): Promise<Group | AllResponseFilter> {
     const existingGroup = await this.groupRepository.findOneBy({ id });
 
     if (!existingGroup) {
@@ -284,9 +306,7 @@ export class GroupService {
 
     // Verificar si el grupo ya está marcado como eliminado
     if (existingGroup.is_deleted) {
-      throw new NotFoundException(
-        validationMessageGroup.NOT_OK.DENIED,
-      );
+      throw new NotFoundException(validationMessageGroup.NOT_OK.DENIED);
     }
 
     const is_deleted = !existingGroup.is_deleted;
@@ -301,7 +321,7 @@ export class GroupService {
         statusCode: HttpStatus.OK,
         message: validationMessageGroup.OK.DELETE,
         timestamp: new Date().toISOString(),
-        path: `/api/v1/group/${id}`,
+        path: request.url,
         data: profile,
       };
     }
@@ -310,8 +330,8 @@ export class GroupService {
       statusCode: HttpStatus.NOT_MODIFIED,
       message: validationMessageGroup.NOT_OK.DELETE,
       timestamp: new Date().toISOString(),
-      path: `/api/v1/group/${id}`,
-      data: null,
+      path: request.url,
+      data: [],
     };
   }
 

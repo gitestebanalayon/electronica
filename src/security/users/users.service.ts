@@ -32,7 +32,11 @@ import { SendEmailDto } from '../email/dtos/send-email.dto';
 import { EmailService } from '../email/services/email/email.service';
 
 // MENSAJE VALIDACIONES
-import { validationMessageGroup, validationMessageServer, validationMessageUser } from '../../common/constants/index';
+import {
+  validationMessageGroup,
+  validationMessageServer,
+  validationMessageUser,
+} from '../../common/constants/index';
 
 @Injectable()
 export class UsersServices {
@@ -46,10 +50,13 @@ export class UsersServices {
     private readonly dataSource: DataSource,
 
     private emailService: EmailService,
-  ) { }
+  ) {}
 
   @UseFilters(AllExceptionsFilter)
-  async create(data: CreateUserDto, @Req() request: Request): Promise<AllResponseFilter> {
+  async create(
+    data: CreateUserDto,
+    @Req() request: Request,
+  ): Promise<AllResponseFilter> {
     try {
       // Verificar si ya existe un usuario activo con el mismo email
       const existingUserByEmail = await this.usersRepository.findOne({
@@ -121,7 +128,6 @@ export class UsersServices {
         data: savedUser,
       };
     } catch (error) {
-
       if (
         error instanceof BadRequestException ||
         error instanceof ConflictException
@@ -168,16 +174,15 @@ export class UsersServices {
 
     console.log(data);
 
-
     // Mapeo para incluir el nombre y el ID de group_description y state, omitiendo la contraseña
     const mappedData = data.map((user) => ({
       ...user,
       password: undefined,
       group_description: user.group_description
         ? {
-          id: user.group_description.id,
-          name: user.group_description.description, // "description"
-        }
+            id: user.group_description.id,
+            name: user.group_description.description, // "description"
+          }
         : undefined, // Solo incluir el nombre y el ID de group_description si existe
     })) as (Users & {
       group_description: { id: number; name: string } | undefined;
@@ -189,7 +194,10 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async findOne(id: number, @Req() request: Request): Promise<Users | AllResponseFilter> {
+  async findOne(
+    id: number,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
       const user = await this.usersRepository.findOne({
@@ -210,7 +218,6 @@ export class UsersServices {
         data: user,
       };
     } catch (error) {
-
       if (error instanceof ConflictException) {
         throw error;
       }
@@ -222,7 +229,11 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async updateUser(id: number, data: UpdateUserDto, @Req() request: Request): Promise<Users | AllResponseFilter> {
+  async updateUser(
+    id: number,
+    data: UpdateUserDto,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
     // Iniciar una transacción con QueryRunner
     const queryRunner = this.dataSource.createQueryRunner();
 
@@ -367,7 +378,10 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async isActive(id: number, @Req() request: Request): Promise<Users | AllResponseFilter> {
+  async isActive(
+    id: number,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID
       const existingUser = await this.usersRepository.findOneBy({ id });
@@ -414,7 +428,10 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async isStaff(id: number, @Req() request: Request): Promise<Users | AllResponseFilter> {
+  async isStaff(
+    id: number,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID
       const existingUser = await this.usersRepository.findOneBy({ id });
@@ -452,7 +469,10 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async isRoot(id: number, @Req() request: Request): Promise<Users | AllResponseFilter> {
+  async isRoot(
+    id: number,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID
       const existingUser = await this.usersRepository.findOneBy({ id });

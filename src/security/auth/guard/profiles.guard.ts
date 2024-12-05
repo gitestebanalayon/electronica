@@ -7,10 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 
 // Importante esto es el profiles_key implementado en el decorador de profiles.decorator.ts GROUP_KEY
-import {
-  GROUP_KEY,
-  PERMISSIONS_KEY,
-} from '../decorators/profiles.decorator';
+import { GROUP_KEY, PERMISSIONS_KEY } from '../decorators/profiles.decorator';
 
 @Injectable()
 export class ProfilesGuard implements CanActivate {
@@ -51,6 +48,12 @@ export class ProfilesGuard implements CanActivate {
     const hasRequiredGroup = requiredGroupDescription.some((groupId) =>
       user.groupId.includes(groupId),
     );
+
+    if (!hasRequiredGroup) {
+      throw new ForbiddenException(
+        'Acceso denegado: usted no posee el rol que permita el acceso.',
+      );
+    }
 
     const userPermissions = user.permissions;
     const hasRequiredPermissions =

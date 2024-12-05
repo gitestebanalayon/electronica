@@ -8,17 +8,17 @@ import {
   Put,
   Query,
   Req,
-  UseGuards,
+  //UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { /*ApiBearerAuth,*/ ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/create-users.dto';
 import { UpdateUserDto } from './dto/update-users.dto';
 import { UsersServices } from './users.service';
 import { FilterUserDto, ResponseUsersDto } from './dto/filter-user.dto';
 import { AllResponseFilter } from 'src/core/errors/all-exceptions.filter';
-import { JwtAuthGuard } from '../auth/guard/auth.guard';
-import { AuthWithProfiles } from '../auth/decorators/auth.decorator';
-import { Profilee } from '../../common/enums/profile.enum.ts';
+// import { JwtAuthGuard } from '../auth/guard/auth.guard';
+// import { AuthWithProfiles } from '../auth/decorators/auth.decorator';
+// import { Profilee } from '../../common/enums/profile.enum.ts';
 import Users from './entities/users.entity';
 import { Request } from 'express';
 
@@ -33,7 +33,7 @@ export class UsuariosController {
   //@AuthWithProfiles([Profilee.ADMIN], { create: true })
   create(
     @Body() data: CreateUserDto,
-    @Req() request: Request
+    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     return this.usersServices.create(data, request);
   }
@@ -44,13 +44,16 @@ export class UsuariosController {
   @ApiQuery({ name: 'email', type: 'string', required: false })
   @ApiQuery({ name: 'page', type: 'number', required: false })
   @ApiQuery({ name: 'take', type: 'number', required: false })
-  findTable(@Query() query: FilterUserDto, @Req() request: Request): Promise<ResponseUsersDto> {
+  findTable(@Query() query: FilterUserDto): Promise<ResponseUsersDto> {
     return this.usersServices.findTable(query);
   }
 
   @Get('filter:id')
   //@AuthWithProfiles([Profilee.ADMIN], { read: true })
-  findOne(@Param('id') id: number, @Req() request: Request): Promise<Users | AllResponseFilter> {
+  findOne(
+    @Param('id') id: number,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
     return this.usersServices.findOne(id, request);
   }
 
@@ -59,16 +62,16 @@ export class UsuariosController {
   async updateUser(
     @Param('id') userId: number,
     @Body() data: UpdateUserDto,
-    @Req() request: Request
+    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     return this.usersServices.updateUser(userId, data, request);
   }
- 
+
   @Put('is_active/:id')
   //@AuthWithProfiles([Profilee.ADMIN], { delete: true })
   isActiveUser(
     @Param('id') id: number,
-    @Req() request: Request
+    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     return this.usersServices.isActive(id, request);
   }
@@ -77,7 +80,7 @@ export class UsuariosController {
   //@AuthWithProfiles([Profilee.ADMIN], { update: true })
   isStaffUser(
     @Param('id') id: number,
-    @Req() request: Request
+    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     return this.usersServices.isStaff(id, request);
   }
@@ -86,9 +89,8 @@ export class UsuariosController {
   //@AuthWithProfiles([Profilee.ADMIN], { update: true })
   isRootUser(
     @Param('id') id: number,
-    @Req() request: Request
+    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     return this.usersServices.isRoot(id, request);
   }
-
 }

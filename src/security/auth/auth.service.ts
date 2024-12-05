@@ -14,7 +14,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersServices,
     private readonly jwtService: JwtService,
-  ) { }
+  ) {}
 
   async login({ email, password }: LoginDto): Promise<{
     token: string;

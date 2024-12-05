@@ -7,19 +7,19 @@ import {
   Post,
   Put,
   Query,
-  UseGuards,
+  Req,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { /*ApiBearerAuth,*/ ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { GroupService } from './group.service';
 import Group from './entities/group.entity';
 import { FilterGroupDto, ResponseGroupTableDto } from './dto/filter-group.dto';
 import { AllResponseFilter } from '../../core/errors/all-exceptions.filter';
-import { validationMessageGroup } from '../../common/constants/index';
-import { JwtAuthGuard } from '../auth/guard/auth.guard';
-import { AuthWithProfiles } from '../auth/decorators/auth.decorator';
-import { Profilee } from '../../common/enums/profile.enum.ts';
+import { Request } from 'express';
+// import { JwtAuthGuard } from '../auth/guard/auth.guard';
+// import { AuthWithProfiles } from '../auth/decorators/auth.decorator';
+// import { Profilee } from '../../common/enums/profile.enum.ts';
 
 // @ApiBearerAuth()
 // @UseGuards(JwtAuthGuard)
@@ -30,9 +30,11 @@ export class GroupController {
 
   @Post('create')
   // @AuthWithProfiles([Profilee.ADMIN], { create: true })
-  @ApiResponse({ status: 201, description: validationMessageGroup.OK.CREATED })
-  create(@Body() data: CreateGroupDto): Promise<Group | AllResponseFilter> {
-    return this.groupService.create(data);
+  create(
+    @Body() data: CreateGroupDto,
+    @Req() request: Request,
+  ): Promise<Group | AllResponseFilter> {
+    return this.groupService.create(data, request);
   }
 
   @Get('read')
@@ -46,8 +48,11 @@ export class GroupController {
 
   @Get('filter/:id')
   //@AuthWithProfiles([Profilee.ADMIN], { read: true })
-  findOne(@Param('id') id: number): Promise<Group | AllResponseFilter> {
-    return this.groupService.findOne(id);
+  findOne(
+    @Param('id') id: number,
+    @Req() request: Request,
+  ): Promise<Group | AllResponseFilter> {
+    return this.groupService.findOne(id, request);
   }
 
   @Patch('update/:id')
@@ -55,13 +60,17 @@ export class GroupController {
   update(
     @Param('id') id: number,
     @Body() data: UpdateGroupDto,
+    @Req() request: Request,
   ): Promise<Group | AllResponseFilter> {
-    return this.groupService.update(id, data);
+    return this.groupService.update(id, data, request);
   }
 
   @Put('delete/:id')
   //@AuthWithProfiles([Profilee.ADMIN], { delete: true })
-  delete(@Param('id') id: number): Promise<Group | AllResponseFilter> {
-    return this.groupService.delete(id);
+  delete(
+    @Param('id') id: number,
+    @Req() request: Request,
+  ): Promise<Group | AllResponseFilter> {
+    return this.groupService.delete(id, request);
   }
 }

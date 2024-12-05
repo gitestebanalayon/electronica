@@ -1,5 +1,4 @@
-import { IsBoolean, IsInt, IsNotEmpty } from 'class-validator';
-
+import { IsBoolean } from 'class-validator';
 
 export class CreateGroupPermissionDto {
   @IsBoolean()

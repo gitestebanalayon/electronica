@@ -30,7 +30,7 @@ export class UpdateUserDto {
   @IsOptional()
   email?: string;
 
-  @ApiProperty({ description: 'Origen de la persona', example: 'V'})
+  @ApiProperty({ description: 'Origen de la persona', example: 'V' })
   @IsString({ message: validationMessageTypes.IS_STRING })
   @IsOptional()
   origen?: 'V' | 'E';
