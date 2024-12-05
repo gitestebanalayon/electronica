@@ -1,6 +1,13 @@
-import { Catch, ArgumentsHost } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  Catch,
+  HttpException,
+  HttpStatus,
+  ExceptionFilter,
+  BadRequestException,
+} from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { Response } from 'express';
 
 @Catch()
 export class AllExceptionsFilter extends BaseExceptionFilter {
@@ -35,4 +42,25 @@ export class AllResponseFilter {
   timestamp: string;
   message: string;
   data: unknown;
+}
+
+@Catch(BadRequestException)
+export class ValidationExceptionFilter implements ExceptionFilter {
+  catch(exception: BadRequestException, host: ArgumentsHost): void {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const status = exception.getStatus();
+    const exceptionResponse = exception.getResponse();
+
+    const message =
+      typeof exceptionResponse === 'string'
+        ? exceptionResponse
+        : (exceptionResponse as { message: string }).message;
+
+    response.status(status).json({
+      statusCode: status,
+      message: message,
+      error: 'Bad Request',
+    });
+  }
 }

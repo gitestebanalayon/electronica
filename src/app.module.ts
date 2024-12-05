@@ -1,12 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
-import { ModulesModule } from './modules/modules.module';
-import { PermissionsModule } from './permissions/permission.module';
-import { ProfilesModule } from './profiles/profiles.module';
-import { UsersModule } from './users/users.module';
-
-import { AuthModule } from './auth/auth.module';
+import { GroupModule } from './security/group/group.module';
+import { UsersModule } from './security/users/users.module';
+import { AuthModule } from './security/auth/auth.module';
 
 import { DatabaseModule } from './database/database.module';
 
@@ -25,11 +22,11 @@ import { AllExceptionsFilter } from './core/errors/all-exceptions.filter';
       isGlobal: true,
       load: [databaseConfig, swaggerConfig],
     }),
+
+    // Security
     DatabaseModule,
     UsersModule,
-    ProfilesModule,
-    PermissionsModule,
-    ModulesModule,
+    GroupModule,
     AuthModule,
   ],
   controllers: [AppController],

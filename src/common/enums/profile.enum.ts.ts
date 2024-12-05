@@ -1,4 +1,5 @@
 export enum Profilee {
-  ADMIN = 'Admin',
-  USER = 'User',
+  ADMIN = 'administrador',
+  DIRECTOR = 'director',
+  USER = 'usuario',
 }
