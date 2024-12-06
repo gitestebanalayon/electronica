@@ -15,15 +15,8 @@ export class JwtAuthGuard implements CanActivate {
     // El objeto context proporciona información
     // sobre la solicitud entrante y el entorno de ejecución.
     const request = context.switchToHttp().getRequest();
-
     const token = this.extractTokenFromHeader(request);
-
-    // Aquí implementar lógica de autenticación o autorización.
-    // Por ejemplo, verificar si el usuario está autenticado, si tiene los roles adecuados, etc.
-
-    // Si la validación es exitosa, devuelve true, permitiendo el acceso.
-
-    // Si la validación falla, devuelve false, denegando el acceso.
+    
     if (!token) {
       throw new UnauthorizedException();
     }
