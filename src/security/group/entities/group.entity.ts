@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import GroupPermission from '../../../database/entitysExternals/groupPermission.entity';
 
-@Entity('group', { schema: 'security' })
+@Entity('group', /*{ schema: 'security' }*/)
 export default class Group {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;

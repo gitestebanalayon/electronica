@@ -9,7 +9,7 @@ import {
 import { Exclude } from 'class-transformer';
 import Group from '../../group/entities/group.entity';
 
-@Entity('user', { schema: 'security' })
+@Entity('user', /*{ schema: 'security' }*/)
 export default class Users {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;
