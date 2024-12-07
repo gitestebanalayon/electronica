@@ -12,7 +12,7 @@ import Group from '../../security/group/entities/group.entity';
 @Index('UQ_group_permission_unique', ['group_id'], {
   unique: true,
 })
-@Entity('group_permission', /*{ schema: 'security' }*/)
+@Entity('group_permission', { schema: 'security' })
 export default class GroupPermission {
   @PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
   id: number;
