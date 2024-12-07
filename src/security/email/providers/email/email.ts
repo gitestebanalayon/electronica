@@ -6,12 +6,12 @@ dotenv.config();
 @Injectable()
 export class Email {
   transporter = nodemailer.createTransport({
-    host: '10.9.9.10', // Servidor SMTP correcto
-    port: 25, // Puerto para conexiones STARTTLS
-    secure: false, // Se establece como 'false' para usar STARTTLS
+    host: 'smtp.gmail.com', // Host del servidor SMTP de Gmail
+    port: 465, // Puerto para conexiones seguras (SSL/TLS)
+    secure: true, // 'true' para usar SSL/TLS
     auth: {
-      user: 'no-responde@mppe.gob.ve', // Nombre de usuario SMTP
-      pass: 'Sistemas.2023', // Contraseña o clave de autenticación
+      user: 'serviciosesteban953@gmail.com', // Tu dirección de correo electrónico de Gmail
+      pass: 'rnfvpxpxwmgbxeke', // Contraseña de aplicación generada en Gmail
     },
     tls: {
       rejectUnauthorized: false, // Permite conexiones a servidores con certificados no válidos

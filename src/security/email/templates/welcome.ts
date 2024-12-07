@@ -62,12 +62,12 @@ export const fillTemplate = (body: SendEmailDto): string => {
 
 <body>
     <div class="container">
-        <h1>SISTEMA GESTIÓN DE JUBILADOS</h1>
-        <h4>¡Bienvenido al Sistema de Gestión Jubilados ${params.username}!</h4>
+        <h1>SISTEMA TALLER ELECTRÓNICA</h1>
+        <h4>¡Bienvenido al Sistema de Taller Electrónica ${params.username}!</h4>
         <h4 class="h4"><strong>Contraseña:</strong> ${params.password}</h4>
     </div>
     <footer>
-        <p>&copy; ${new Date().getFullYear()} 14100. Todos los derechos reservados.</p>
+        <p>&copy; ${new Date().getFullYear()} Taller Electrónica. Todos los derechos reservados.</p>
     </footer>
 </body>
 

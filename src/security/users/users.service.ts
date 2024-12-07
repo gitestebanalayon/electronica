@@ -50,7 +50,7 @@ export class UsersServices {
     private readonly dataSource: DataSource,
 
     private emailService: EmailService,
-  ) {}
+  ) { }
 
   @UseFilters(AllExceptionsFilter)
   async create(
@@ -60,7 +60,7 @@ export class UsersServices {
     try {
       // Verificar si ya existe un usuario activo con el mismo email
       const existingUserByEmail = await this.usersRepository.findOne({
-        where: { email: data.email },
+        where: { email: data.email, is_active: true },
       });
       if (existingUserByEmail) {
         throw new ConflictException(validationMessageUser.CONFLICT.EMAIL);
@@ -68,7 +68,7 @@ export class UsersServices {
 
       // Verificar si ya existe un usuario activo con el mismo usuario
       const existingUserByUsername = await this.usersRepository.findOne({
-        where: { username: data.username },
+        where: { username: data.username, is_active: true },
       });
       if (existingUserByUsername) {
         throw new ConflictException(validationMessageUser.CONFLICT.USER);
@@ -76,7 +76,7 @@ export class UsersServices {
 
       // Verificar si ya existe un usuario activo con la misma cédula
       const existingUserByCi = await this.usersRepository.findOne({
-        where: { ci: data.ci },
+        where: { ci: data.ci, is_active: true },
       });
       if (existingUserByCi) {
         throw new ConflictException(validationMessageUser.CONFLICT.CI);
@@ -93,7 +93,27 @@ export class UsersServices {
       const generatedPassword = Math.random().toString(36).slice(-8);
       const hashedPassword = await bcryptjs.hash(generatedPassword, 10);
 
-      // Inicio de crear usuario
+      // Preparar los datos del correo
+      const sendEmailDto: SendEmailDto = {
+        from: 'serviciosesteban953@gmail.com',
+        subjectEmail: 'Bienvenido',
+        sendTo: data.email,
+        template: 'welcome',
+        params: { password: generatedPassword, username: data.username },
+      };
+
+      // Intentar enviar el correo
+      try {
+        await this.emailService.sendEmail(sendEmailDto);
+      } catch (emailError) {
+        // Lanzar excepción si falla el envío del correo
+        throw new InternalServerErrorException(
+          `Error al enviar el correo a ${data.email}: ${emailError.message}`,
+          emailError.stack,
+        );
+      }
+
+      // Crear y guardar el usuario solo si el correo se envió con éxito
       const user = new Users();
       user.code = data.origen + data.ci;
       user.username = data.username;
@@ -110,15 +130,6 @@ export class UsersServices {
 
       const savedUser = await this.usersRepository.save(user);
 
-      // ENVIAR CONTRASEÑA POR CORREO
-      const sendEmailDto: SendEmailDto = {
-        from: 'no-responde@mppe.gob.ve',
-        subjectEmail: 'Bienvenido',
-        sendTo: data.email,
-        template: 'welcome',
-        params: { password: generatedPassword, username: user.username },
-      };
-      await this.emailService.sendEmail(sendEmailDto);
 
       return {
         statusCode: HttpStatus.CREATED,
@@ -130,7 +141,8 @@ export class UsersServices {
     } catch (error) {
       if (
         error instanceof BadRequestException ||
-        error instanceof ConflictException
+        error instanceof ConflictException ||
+        error instanceof InternalServerErrorException
       ) {
         throw error;
       }
@@ -180,9 +192,9 @@ export class UsersServices {
       password: undefined,
       group_description: user.group_description
         ? {
-            id: user.group_description.id,
-            name: user.group_description.description, // "description"
-          }
+          id: user.group_description.id,
+          name: user.group_description.description, // "description"
+        }
         : undefined, // Solo incluir el nombre y el ID de group_description si existe
     })) as (Users & {
       group_description: { id: number; name: string } | undefined;
