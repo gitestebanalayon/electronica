@@ -5,6 +5,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Req,
+  UnauthorizedException,
   UseFilters,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -37,6 +38,7 @@ import {
   validationMessageServer,
   validationMessageUser,
 } from '../../common/constants/index';
+import { UpdatePasswordUserDto } from './dto/update-password-users.dto';
 
 @Injectable()
 export class UsersServices {
@@ -129,7 +131,6 @@ export class UsersServices {
       user.group_description = group;
 
       const savedUser = await this.usersRepository.save(user);
-
 
       return {
         statusCode: HttpStatus.CREATED,
@@ -376,18 +377,15 @@ export class UsersServices {
 
   @UseFilters(AllExceptionsFilter)
   async findOneByEmailWithPassword(email: string): Promise<Users | null> {
-    return this.usersRepository.findOne({
-      where: { email },
+    return await this.usersRepository.findOne({
+      where: { email, is_active: true },
       relations: [
         'group_description',
         'group_description.groupPermission',
-        // 'profile.groupClass',
-        // 'profile.groupClass.permissions',
-        // 'profile.profilesModules',
-        // 'profile.profilesModules.modules',
       ],
     });
   }
+
 
   @UseFilters(AllExceptionsFilter)
   async isActive(
@@ -529,5 +527,72 @@ export class UsersServices {
         validationMessageServer.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  @UseFilters(AllExceptionsFilter)
+  async changePassword(
+    data: UpdatePasswordUserDto,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
+
+    try {
+
+      const user = await this.usersRepository.findOne({
+        where: { id: request.user.id, is_active: true },
+      })
+
+      if (!user) {
+        throw new ConflictException(validationMessageUser.NOT_CONTENT.USER)
+      }
+
+      // Validar la contraseña actual proporcionada
+      const isPasswordValid = await bcryptjs.compare(data.currentPassword, user.password);
+
+      if (!isPasswordValid) {
+        throw new UnauthorizedException(validationMessageUser.CONFLICT.PASSWORD);
+      }
+
+      // Verificar que la nueva contraseña no sea igual a la anterior
+      const isNewPasswordSameAsOld = await bcryptjs.compare(data.password, user.password);
+
+      if (isNewPasswordSameAsOld) {
+        throw new ConflictException(validationMessageUser.CONFLICT.SAME_PASSWORD);
+      }
+
+      const hashedPassword = await bcryptjs.hash(data.password, 10);
+      // Actualizar la contraseña en el usuario
+      user.password = hashedPassword;
+      user.lastPasswordChange = new Date();
+      const updatedUser = await this.usersRepository.save(user);
+
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: validationMessageUser.OK.PASSWORD,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+        data: {
+          "id": updatedUser.id,
+          "username": updatedUser.username,
+          "email": updatedUser.email
+        }, // Retornar el usuario actualizado
+      };
+    } catch (error) {
+
+      console.log(error);
+
+
+      if (
+        error instanceof ConflictException ||
+        error instanceof UnauthorizedException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(error)
+    }
+
+
+
   }
 }

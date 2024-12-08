@@ -39,6 +39,12 @@ export default class Users {
   @Exclude()
   password: string;
 
+  @Column({ type: 'timestamp', nullable: true })
+  lastPasswordChange: Date;
+
+  @Column('boolean', { name: 'is_locked', default: false })
+  is_locked: boolean;
+
   @Column('integer', { name: 'failed_attempts', default: 0 })
   failed_attempts: number;
 
@@ -56,6 +62,9 @@ export default class Users {
 
   @Column('boolean', { name: 'is_root', default: false })
   is_root: boolean;
+
+  @Column('varchar', { name: 'recovery_code', length: 255, nullable: true })
+  recovery_code: string;
 
   @ManyToOne(() => Group, (group_description) => group_description.users, {
     nullable: true,

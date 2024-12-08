@@ -8,24 +8,25 @@ import {
   Put,
   Query,
   Req,
-  //UseGuards,
+  UseGuards,
 } from '@nestjs/common';
-import { /*ApiBearerAuth,*/ ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CreateUserDto } from './dto/create-users.dto';
 import { UpdateUserDto } from './dto/update-users.dto';
 import { UsersServices } from './users.service';
 import { FilterUserDto, ResponseUsersDto } from './dto/filter-user.dto';
 import { AllResponseFilter } from 'src/core/errors/all-exceptions.filter';
-// import { JwtAuthGuard } from '../auth/guard/auth.guard';
+import { JwtAuthGuard } from '../auth/guard/auth.guard';
 // import { AuthWithProfiles } from '../auth/decorators/auth.decorator';
 // import { Profilee } from '../../common/enums/profile.enum.ts';
 import Users from './entities/users.entity';
 import { Request } from 'express';
+import { UpdatePasswordUserDto } from './dto/update-password-users.dto';
 
-// @ApiBearerAuth()
-// @UseGuards(JwtAuthGuard)
-@ApiTags('Users')
-@Controller('users')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@ApiTags('Account')
+@Controller('account')
 export class UsuariosController {
   constructor(private readonly usersServices: UsersServices) {}
 
@@ -93,4 +94,15 @@ export class UsuariosController {
   ): Promise<Users | AllResponseFilter> {
     return this.usersServices.isRoot(id, request);
   }
+
+
+  @Put('update/password')
+  //@AuthWithProfiles([Profilee.ADMIN], { update: true })
+  async changePassword(
+    @Body() data: UpdatePasswordUserDto,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
+    return this.usersServices.changePassword(data, request);
+  }
+
 }

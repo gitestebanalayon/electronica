@@ -1,46 +1,107 @@
 import {
+  ConflictException,
+  HttpStatus,
   Injectable,
   InternalServerErrorException,
+  Req,
   UnauthorizedException,
+  UseFilters,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcryptjs from 'bcryptjs';
 import Users from '../users/entities/users.entity';
 import { UsersServices } from '../users/users.service';
 import { LoginDto } from './dto/login-auth.dto';
+import { validationMessageUser } from 'src/common/constants';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { AllExceptionsFilter, AllResponseFilter } from 'src/core/errors/all-exceptions.filter';
+import { Request } from 'express'; // Importar Request
+import { UnlockAccountDto } from './dto/unlock-account.dto';
+import { SendEmailDto } from '../email/dtos/send-email.dto';
+import { EmailService } from '../email/services/email/email.service';
+import { RecoveryCodeDto } from './dto/reset-code.dto';
+import { RestorePasswordDto } from './dto/restore-password.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
+    @InjectRepository(Users)
+    private readonly usersRepository: Repository<Users>,
+
     private readonly usersService: UsersServices,
     private readonly jwtService: JwtService,
-  ) {}
+    private emailService: EmailService,
+  ) { }
 
   async login({ email, password }: LoginDto): Promise<{
     token: string;
-    email: string;
-    groupId: { id: number; description: string }[];
-    permissions: {
-      create: boolean;
-      read: boolean;
-      update: boolean;
-      delete: boolean;
-    };
   }> {
     try {
       // Busca al usuario incluyendo el campo de contraseña
       const user = await this.usersService.findOneByEmailWithPassword(email);
 
       if (!user) {
-        throw new UnauthorizedException('Invalid credentials');
+        throw new UnauthorizedException(validationMessageUser.NOT_CONTENT.USER);
+      }
+
+
+      // Validar si el usuario existe pero no está activo
+      if (user && !user.is_staff) {
+        throw new ConflictException(validationMessageUser.NOT_CONTENT.ACTIVE);
       }
 
       // Verifica la contraseña
-      const isPasswordValid = await bcryptjs.compare(password, user.password);
+      // const isPasswordValid = await bcryptjs.compare(password, user.password);
 
-      if (!isPasswordValid) {
-        throw new UnauthorizedException('Invalid credentials');
+      // if (!isPasswordValid) {
+      //   throw new UnauthorizedException('Credenciales invalidas');
+      // }
+
+
+
+
+
+
+      // Si el usuario está bloqueado
+      if (user.is_locked) {
+        throw new UnauthorizedException('Su cuenta está bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione "desbloquear cuenta');
       }
+
+      // Verificar la contraseña
+      const passwordMatches = await bcryptjs.compare(password, user.password);
+
+      if (!passwordMatches) {
+        // Incrementar el contador de intentos fallidos
+        user.failed_attempts += 1;
+
+
+
+        // Si los intentos fallidos llegan a 3, bloquear el usuario
+        if (user.failed_attempts >= 3) {
+          user.is_locked = true;
+          
+          await this.usersRepository.save(user); // Guarda el usuario actualizado
+          throw new UnauthorizedException('Su cuenta ha sido bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione "desbloquear cuenta"');
+        }
+
+        console.log(user.failed_attempts);
+
+        // Guardar el usuario con el contador de intentos fallidos actualizado
+        await this.usersRepository.save(user);
+        throw new UnauthorizedException('Credenciales no válidas');
+      }
+
+      // Si la contraseña es correcta, reiniciar el contador de intentos fallidos
+      user.failed_attempts = 0;
+      await this.usersRepository.save(user)
+
+
+
+
+
+
+
 
       // Verifica si el grupo y los permisos están disponibles
       if (!user.group_description || !user.group_description.groupPermission) {
@@ -91,15 +152,15 @@ export class AuthService {
       // Retorna la respuesta
       return {
         token,
-        email,
-        groupId,
-        permissions,
       };
     } catch (error) {
       console.log(error);
 
       // Maneja los errores y los lanza con un formato adecuado
-      if (error instanceof UnauthorizedException) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof ConflictException
+      ) {
         throw error;
       }
 
@@ -109,110 +170,6 @@ export class AuthService {
       );
     }
   }
-
-  // async login({ email, password }: LoginDto): Promise<{
-  //   token: string;
-  //   email: string;
-
-  //   groupId: { id: number; description: string }[]; // Cambiado para ser un objeto
-  //   //groupId_name: string; // Nueva propiedad para la descripción del grupo
-
-  //   classId: { id: number; description: string }[]; // Cambiado para ser un array de objetos
-  //   //classId_name: string; // Nueva propiedad para la descripción de la clase
-
-  //   permissions: {
-  //     create: boolean;
-  //     read: boolean;
-  //     update: boolean;
-  //     delete: boolean;
-  //   };
-  // }> {
-  //   // En vez de FinOneByEmail, ahora usar este, debido a que en entity usuarios se cambio
-  //   // La contraseña a select: false para que no se muestre en get
-  //   const user = await this.usersService.findOneByEmailWithPassword(email);
-
-  //   if (!user) {
-  //     throw new UnauthorizedException('Invalid credentials'); // O maneja el error según tu lógica
-  //   }
-
-  //   // Aquí debes verificar la contraseña del usuario
-  //   const isPasswordValid = await bcryptjs.compare(password, user.password);
-
-  //   if (!isPasswordValid) {
-  //     throw new UnauthorizedException('Invalid credentials'); // O maneja el error según tu lógica
-  //   }
-
-  //   // Asegúrate de que el grupo y los permisos estén disponibles
-  //   if (!user.group_description || !user.group_description.groupPermission) {
-  //     throw new UnauthorizedException(
-  //       'No permissions associated with user group',
-  //     );
-  //   }
-
-  //   const groupPermission = user.group_description.groupPermission.find(
-  //     (perm) => perm.class_id === perm.class_id, // Asegúrate de tener classId en el objeto user
-  //   );
-
-  //   if (!groupPermission) {
-  //     throw new UnauthorizedException(
-  //       'No permissions found for the user class',
-  //     );
-  //   }
-
-  //   // Agregar permisos al objeto del usuario
-  //   const permissions = {
-  //     create: groupPermission.create || false,
-  //     read: groupPermission.read || false,
-  //     update: groupPermission.update || false,
-  //     delete: groupPermission.delete || false,
-  //   };
-
-  //   // Crear objeto de groupId
-  //   const groupId = [
-  //     {
-  //       id: user.group_description.id, // ID del grupo
-  //       description: user.group_description.description, // Descripción del grupo
-  //     },
-  //   ];
-
-  //   // Cambiar classId a un array de objetos
-  //   const classId = user.group_description.groupPermission.map((perm) => ({
-  //     id: perm.class_m.id || 0, // Obtener el ID correcto de class
-  //     description: perm.class_m.description || '', // Obtener la descripción de la clase
-  //   }));
-
-  //   //const classId = [groupPermission.class_m.id || 0]; // Envolver en un array // Asegúrate de obtener el ID correcto de class
-
-  //   // // Obtén las descripciones de grupo y clase
-  //   // const groupId_name = user.group_description.description; // Asegúrate de que esta propiedad exista
-  //   // const classId_name = groupPermission.class_m.description; // Asegúrate de que esta propiedad exista
-
-  //   // Construye el payload para el JWT
-  //   const payload = {
-  //     id: user.id,
-  //     email: user.email,
-  //     groupId: groupId.map((group) => group.description), // Este ID se utiliza en el token
-  //     classId: classId.map((cls) => cls.id), // Solo los IDs de las clases
-  //     permissions: permissions, // Incluir permisos en el payload
-  //     is_root: user.is_root,
-  //     is_staff: user.is_staff,
-  //   };
-
-  //   const token = await this.jwtService.signAsync(payload);
-
-  //   return {
-  //     token,
-  //     email,
-
-  //     groupId, // Retornar el objeto con id y description
-  //     //groupId_name, // Incluye la descripción del grupo
-
-  //     permissions: permissions, // Retornar permisos junto con la respuesta
-
-  //     classId,
-  //     //classId_name, // Incluye la descripción de la clase
-  //   };
-  // }
 
   private async findUserByCredentials(data: LoginDto): Promise<Users | null> {
     // Busca el usuario en la base de datos por correo electrónico
@@ -233,4 +190,218 @@ export class AuthService {
       throw new UnauthorizedException('Token no válido');
     }
   }
+
+  @UseFilters(AllExceptionsFilter)
+  async unlockAccount(
+    @Req() request: Request,
+    data: UnlockAccountDto
+  ): Promise<Users | AllResponseFilter> {
+    try {
+
+      const userExist = await this.usersRepository.findOne({
+        where: { email: data.email, ci: data.ci, birthdate: data.birthdate, is_active: true, is_staff: true },
+      });
+
+      if (!userExist) {
+        throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
+      }
+
+      const user = await this.usersRepository.findOne({
+        where: { email: data.email, ci: data.ci, birthdate: data.birthdate, is_active: true, is_staff: true, is_locked: true },
+      });
+
+      if (!user) {
+        throw new ConflictException('Este usuario no se encuentra bloqueado, puede iniciar sesión.');
+      }
+
+      // Resetear el estado de bloqueo
+      user.is_locked = false;
+      user.failed_attempts = 0;
+
+      await this.usersRepository.save(user);
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: validationMessageUser.OK.UNLOCK,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+        data: {
+          username: user.username,
+          email: user.email
+        }, // Retornar el usuario actualizado
+      };
+    } catch (error) {
+      console.log(error);
+
+
+      if (
+        error instanceof ConflictException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(error)
+
+    }
+  }
+
+  @UseFilters(AllExceptionsFilter)
+  async resetCode(
+    @Req() request: Request,
+    data: RecoveryCodeDto
+  ): Promise<Users | AllResponseFilter> {
+    try {
+
+      const user = await this.usersRepository.findOne({
+        where: { email: data.email, ci: data.ci, birthdate: data.birthdate, is_active: true, is_staff: true },
+      });
+
+      if (!user) {
+        throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
+      }
+
+      if (user.is_locked) {
+        throw new UnauthorizedException('false');
+      }
+
+      const code = Math.random().toString(36).slice(-5);
+      const hashedCode = await bcryptjs.hash(code, 10);
+
+      // Preparar los datos del correo
+      const sendEmailDto: SendEmailDto = {
+        from: 'serviciosesteban953@gmail.com',
+        subjectEmail: 'Bienvenido',
+        sendTo: user.email,
+        template: 'welcome',
+        params: { password: code, username: user.username },
+      };
+
+      // Intentar enviar el correo
+      try {
+        await this.emailService.sendEmail(sendEmailDto);
+      } catch (emailError) {
+        // Lanzar excepción si falla el envío del correo
+        throw new InternalServerErrorException(
+          `Error al enviar el correo a ${data.email}: ${emailError.message}`,
+          emailError.stack,
+        );
+      }
+
+      user.recovery_code = hashedCode;
+
+      await this.usersRepository.save(user);
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: validationMessageUser.OK.CODE,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+        data: {
+          username: user.username,
+          email: user.email
+        }, // Retornar el usuario actualizado
+      };
+    } catch (error) {
+      console.log(error);
+
+
+      if (
+        error instanceof ConflictException ||
+        error instanceof UnauthorizedException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(error)
+
+    }
+  }
+
+  @UseFilters(AllExceptionsFilter)
+  async restorePassword(
+    @Req() request: Request,
+    data: RestorePasswordDto
+  ): Promise<Users | AllResponseFilter> {
+    try {
+
+      const user = await this.usersRepository.findOne({
+        where: { email: data.email, ci: data.ci, birthdate: data.birthdate, is_active: true, is_staff: true },
+      });
+
+      if (!user) {
+        throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
+      }
+
+      if (user.is_locked) {
+        throw new ConflictException(validationMessageUser.OK.BLOCKED);
+      }
+
+      if (!user.recovery_code) {
+        throw new ConflictException(validationMessageUser.NOT_OK.CODE);
+      }
+
+      
+      const codeMatches = await bcryptjs.compare(data.recovery_code, user.recovery_code);
+
+      if (!codeMatches) {
+        throw new UnauthorizedException(validationMessageUser.NOT_OK.CODE);
+      }
+
+      const generatePassword = Math.random().toString(36).slice(-8);
+      const hashedPassword = await bcryptjs.hash(generatePassword, 10);
+
+      // Preparar los datos del correo
+      const sendEmailDto: SendEmailDto = {
+        from: 'serviciosesteban953@gmail.com',
+        subjectEmail: 'Bienvenido',
+        sendTo: user.email,
+        template: 'welcome',
+        params: { password: generatePassword, username: user.username },
+      };
+
+      // Intentar enviar el correo
+      try {
+        await this.emailService.sendEmail(sendEmailDto);
+      } catch (emailError) {
+        // Lanzar excepción si falla el envío del correo
+        throw new InternalServerErrorException(
+          `Error al enviar el correo a ${data.email}: ${emailError.message}`,
+          emailError.stack,
+        );
+      }
+
+      user.recovery_code = null;
+      user.password = hashedPassword;
+      user.lastPasswordChange = new Date();
+
+      await this.usersRepository.save(user);
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: validationMessageUser.OK.RESTORE_PASSWORD,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+        data: {
+          username: user.username,
+          email: user.email
+        }, // Retornar el usuario actualizado
+      };
+    } catch (error) {
+      console.log(error);
+
+
+      if (
+        error instanceof ConflictException ||
+        error instanceof UnauthorizedException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(error)
+
+    }
+  }
+
+
+
 }

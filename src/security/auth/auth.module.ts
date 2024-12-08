@@ -6,6 +6,7 @@ import { UsersModule } from '../users/users.module';
 import { JwtAuthGuard } from './guard/auth.guard';
 import { GroupModule } from '../group/group.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     }),
     forwardRef(() => UsersModule), // Se usa forwardRef si hay una dependencia circular
     forwardRef(() => GroupModule), // forwardRef para evitar ciclos
+    EmailModule
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard],

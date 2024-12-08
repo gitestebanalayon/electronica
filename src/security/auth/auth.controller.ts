@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Put,
   Req,
   UnauthorizedException,
   UseGuards,
@@ -13,17 +14,25 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login-auth.dto';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from './guard/auth.guard';
+import Users from '../users/entities/users.entity';
+import { AllResponseFilter } from 'src/core/errors/all-exceptions.filter';
+import { Request } from 'express';
+import { UnlockAccountDto } from './dto/unlock-account.dto';
+import { RecoveryCodeDto } from './dto/reset-code.dto';
+import { RestorePasswordDto } from './dto/restore-password.dto';
 
 export interface AuthenticatedUser {
-  email: string;
-  //groupId: Group;
+
   token: string;
 }
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authServices: AuthService,
+    private readonly authService: AuthService
+  ) { }
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
@@ -41,7 +50,7 @@ export class AuthController {
   // Validar token
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @Get('validate-token')
+  @Get('account/validate-token')
   validateToken(@Req() req: Request & { user: AuthenticatedUser }): {
     statusCode: number;
     message: string;
@@ -57,5 +66,32 @@ export class AuthController {
       message: 'Token validado correctamente',
       user: req.user, // Retorna los datos del usuario decodificados
     };
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Put('account/unlock')
+  async unlockAccount(
+    @Body() data: UnlockAccountDto,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
+    return await this.authServices.unlockAccount(request, data);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Put('account/code')
+  async resetCode(
+    @Body() data: RecoveryCodeDto,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
+    return await this.authServices.resetCode(request, data);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Put('account/restore-password')
+  async restorePassword(
+    @Body() data: RestorePasswordDto,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
+    return await this.authServices.restorePassword(request, data);
   }
 }

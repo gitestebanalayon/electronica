@@ -31,6 +31,11 @@ export const validationMessageUser = {
     DEACTIVATE: 'Usuario desactivado exitosamente',
     ROOT_ACTIVATED: 'Usuario activado como root existosamente',
     ROOT_DEACTIVATE: 'Usuario desactivado como root existosamente',
+    PASSWORD: 'Contraseña actualizada existosamente',
+    RESTORE_PASSWORD: 'Contraseña restaurada existosamente, su nueva contraseña se ha enviado a su correo',
+    UNLOCK: 'Cuenta desbloqueada existosamente',
+    CODE: 'Código enviado al correo existosamente',
+    BLOCKED: 'Cuenta bloqueada, por favor seleccione la opción (Desbloquear Cuenta)',
   },
 
   NOT_OK: {
@@ -38,17 +43,21 @@ export const validationMessageUser = {
     UPDATE: 'Error al actualizar el usuario',
     DELETE: 'Error al eliminar el usuario',
     DENIED: 'Este usuario ya ha sido eliminado y no se puede restaurar.',
+    CODE: 'Código invalido',
   },
 
   CONFLICT: {
     USER: 'El usuario ya existe',
     EMAIL: 'El correo ya existe',
     CI: 'La cédula ya existe',
+    PASSWORD: 'Contraseña actual incorrecta',
+    SAME_PASSWORD: 'La contraseña no puede ser igual a la anterior',
   },
 
   NOT_CONTENT: {
     USER: 'El usuario no existe',
     USERS: 'No hay usuarios',
+    ACTIVE: 'Este usuario no esta activado, por favor comuníquese con el administrador'
   },
 };
 
