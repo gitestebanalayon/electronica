@@ -67,7 +67,7 @@ export class AuthService {
         // Si los intentos fallidos llegan a 3, bloquear el usuario
         if (user.failed_attempts >= 3) {
           user.is_locked = true;
-          
+
           await this.usersRepository.save(user); // Guarda el usuario actualizado
           throw new UnauthorizedException('Su cuenta ha sido bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione "desbloquear cuenta"');
         }
@@ -76,7 +76,7 @@ export class AuthService {
 
         // Guardar el usuario con el contador de intentos fallidos actualizado
         await this.usersRepository.save(user);
-        throw new UnauthorizedException('Credenciales no válidas');
+        throw new UnauthorizedException('Contraseña incorrecta');
       }
 
       // Si la contraseña es correcta, reiniciar el contador de intentos fallidos
@@ -324,7 +324,7 @@ export class AuthService {
         throw new ConflictException(validationMessageUser.NOT_OK.CODE);
       }
 
-      
+
       const codeMatches = await bcryptjs.compare(data.recovery_code, user.recovery_code);
 
       if (!codeMatches) {

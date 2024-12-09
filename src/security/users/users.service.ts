@@ -378,7 +378,7 @@ export class UsersServices {
   @UseFilters(AllExceptionsFilter)
   async findOneByEmailWithPassword(email: string): Promise<Users | null> {
     return await this.usersRepository.findOne({
-      where: { email, is_active: true },
+      where: { email },
       relations: [
         'group_description',
         'group_description.groupPermission',
