@@ -45,23 +45,10 @@ export class AuthService {
         throw new UnauthorizedException(validationMessageUser.NOT_CONTENT.USER);
       }
 
-
       // Validar si el usuario existe pero no está activo
       if (user && !user.is_staff) {
         throw new ConflictException(validationMessageUser.NOT_CONTENT.ACTIVE);
       }
-
-      // Verifica la contraseña
-      // const isPasswordValid = await bcryptjs.compare(password, user.password);
-
-      // if (!isPasswordValid) {
-      //   throw new UnauthorizedException('Credenciales invalidas');
-      // }
-
-
-
-
-
 
       // Si el usuario está bloqueado
       if (user.is_locked) {
@@ -95,11 +82,6 @@ export class AuthService {
       // Si la contraseña es correcta, reiniciar el contador de intentos fallidos
       user.failed_attempts = 0;
       await this.usersRepository.save(user)
-
-
-
-
-
 
 
 
@@ -139,6 +121,8 @@ export class AuthService {
       // Construye el payload para el token
       const payload = {
         id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
         email: user.email,
         groupId: groupId.map((group) => group.description),
         permissions,

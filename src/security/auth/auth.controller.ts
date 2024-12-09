@@ -22,7 +22,6 @@ import { RecoveryCodeDto } from './dto/reset-code.dto';
 import { RestorePasswordDto } from './dto/restore-password.dto';
 
 export interface AuthenticatedUser {
-
   token: string;
 }
 
@@ -54,7 +53,6 @@ export class AuthController {
   validateToken(@Req() req: Request & { user: AuthenticatedUser }): {
     statusCode: number;
     message: string;
-    user: AuthenticatedUser;
   } {
     // Si el guardia JwtAuthGuard ha validado el token, se ejecuta este código
     if (!req.user) {
@@ -64,7 +62,6 @@ export class AuthController {
     return {
       statusCode: 200,
       message: 'Token validado correctamente',
-      user: req.user, // Retorna los datos del usuario decodificados
     };
   }
 
