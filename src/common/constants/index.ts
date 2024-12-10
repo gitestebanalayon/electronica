@@ -57,7 +57,7 @@ export const validationMessageUser = {
   NOT_CONTENT: {
     USER: 'La cuenta no existe',
     USERS: 'No hay usuarios',
-    ACTIVE: 'Este usuario no esta activado, por favor comuníquese con el administrador'
+    ACTIVE: 'Este usuario no esta activado, por favor comuníquese con el administrador',
   },
 };
 

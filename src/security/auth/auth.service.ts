@@ -45,6 +45,11 @@ export class AuthService {
         throw new UnauthorizedException(validationMessageUser.NOT_CONTENT.USER);
       }
 
+      // Validar si el usuario existe pero esta eliminado
+      if (user && !user.is_active) {
+        throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
+      }
+
       // Validar si el usuario existe pero no está activo
       if (user && !user.is_staff) {
         throw new ConflictException(validationMessageUser.NOT_CONTENT.ACTIVE);
