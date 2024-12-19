@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Post,
   Put,
+  Query,
   Req,
   UnauthorizedException,
   UseGuards,
@@ -20,6 +21,7 @@ import { Request } from 'express';
 import { UnlockAccountDto } from './dto/unlock-account.dto';
 import { RecoveryCodeDto } from './dto/reset-code.dto';
 import { RestorePasswordDto } from './dto/restore-password.dto';
+import { FilterUserDto } from './dto/filter-user.dto';
 
 export interface AuthenticatedUser {
   token: string;
@@ -30,7 +32,6 @@ export interface AuthenticatedUser {
 export class AuthController {
   constructor(
     private readonly authServices: AuthService,
-    private readonly authService: AuthService
   ) { }
 
   @HttpCode(HttpStatus.OK)
@@ -38,7 +39,7 @@ export class AuthController {
   async login(
     @Body() data: LoginDto,
   ): Promise<{ statusCode: number; message: string; data: AuthenticatedUser }> {
-    const result = await this.authService.login(data);
+    const result = await this.authServices.login(data);
     return {
       statusCode: HttpStatus.OK,
       message: 'Inicio de sesión exitoso',
@@ -64,6 +65,14 @@ export class AuthController {
       message: 'Token validado correctamente',
     };
   }
+  @Get('filter')
+  async findOne(
+    @Query() data: FilterUserDto,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
+    return await this.authServices.findOne(data, request);
+  }
+
 
   @HttpCode(HttpStatus.OK)
   @Put('account/unlock')

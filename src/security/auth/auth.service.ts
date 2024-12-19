@@ -12,7 +12,7 @@ import * as bcryptjs from 'bcryptjs';
 import Users from '../users/entities/users.entity';
 import { UsersServices } from '../users/users.service';
 import { LoginDto } from './dto/login-auth.dto';
-import { validationMessageUser } from 'src/common/constants';
+import { validationMessageServer, validationMessageUser } from 'src/common/constants';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AllExceptionsFilter, AllResponseFilter } from 'src/core/errors/all-exceptions.filter';
@@ -22,6 +22,7 @@ import { SendEmailDto } from '../email/dtos/send-email.dto';
 import { EmailService } from '../email/services/email/email.service';
 import { RecoveryCodeDto } from './dto/reset-code.dto';
 import { RestorePasswordDto } from './dto/restore-password.dto';
+import { FilterUserDto } from './dto/filter-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -177,6 +178,41 @@ export class AuthService {
       return this.jwtService.verify(token); // Esto retornará los datos decodificados
     } catch {
       throw new UnauthorizedException('Token no válido');
+    }
+  }
+
+  @UseFilters(AllExceptionsFilter)
+  async findOne(
+    data: FilterUserDto,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
+    try {
+      // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
+      const user = await this.usersRepository.findOne({
+        where: { ci: data.ci, email: data.email, birthdate: data.birthdate },
+      });
+
+      // En caso de no existir el usuario
+      if (!user) {
+        throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
+      }
+
+      // Devolver la respuesta en formato estandarizado
+      return {
+        statusCode: HttpStatus.OK,
+        message: validationMessageUser.OK.CONTENT,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+        data: true,
+      };
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        validationMessageServer.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -354,7 +390,7 @@ export class AuthService {
       } catch (emailError) {
         // Lanzar excepción si falla el envío del correo
         throw new InternalServerErrorException(
-          `Error al enviar el correo a ${data.email}: ${emailError.message}`,
+          `Error al enviar el correo por favor verifique la conexión`,
           emailError.stack,
         );
       }
@@ -390,6 +426,7 @@ export class AuthService {
 
     }
   }
+
 
 
 
