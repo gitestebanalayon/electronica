@@ -11,7 +11,6 @@ import { Repository } from 'typeorm';
 import Users from 'src/security/users/entities/users.entity';
 import { validationMessageUser } from 'src/common/constants';
 
-
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
@@ -41,8 +40,13 @@ export class JwtAuthGuard implements CanActivate {
       }
 
       // Validar si el token es anterior al último cambio de contraseña
-      if (user.lastPasswordChange && payload.iat * 1000 < user.lastPasswordChange.getTime()) {
-        throw new UnauthorizedException('Token no válido debido a cambio de contraseña');
+      if (
+        user.lastPasswordChange &&
+        payload.iat * 1000 < user.lastPasswordChange.getTime()
+      ) {
+        throw new UnauthorizedException(
+          'Token no válido debido a cambio de contraseña',
+        );
       }
 
       // Agregar los datos del usuario al request

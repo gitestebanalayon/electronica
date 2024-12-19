@@ -21,7 +21,7 @@ import { EmailModule } from '../email/email.module';
     }),
     forwardRef(() => UsersModule), // Se usa forwardRef si hay una dependencia circular
     forwardRef(() => GroupModule), // forwardRef para evitar ciclos
-    EmailModule
+    EmailModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard],

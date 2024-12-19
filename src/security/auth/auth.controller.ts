@@ -30,9 +30,7 @@ export interface AuthenticatedUser {
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authServices: AuthService,
-  ) { }
+  constructor(private readonly authServices: AuthService) {}
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
@@ -72,7 +70,6 @@ export class AuthController {
   ): Promise<Users | AllResponseFilter> {
     return await this.authServices.findOne(data, request);
   }
-
 
   @HttpCode(HttpStatus.OK)
   @Put('account/unlock')

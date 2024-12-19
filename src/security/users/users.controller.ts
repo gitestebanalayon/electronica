@@ -96,12 +96,13 @@ export class UsuariosController {
   }
 
   @Put('update/password')
-  @AuthWithProfiles([Profilee.ADMIN, Profilee.DIRECTOR, Profilee.USER], { update: true })
+  @AuthWithProfiles([Profilee.ADMIN, Profilee.DIRECTOR, Profilee.USER], {
+    update: true,
+  })
   async changePassword(
     @Body() data: UpdatePasswordUserDto,
     @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     return this.usersServices.changePassword(data, request);
   }
-
 }

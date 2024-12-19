@@ -32,10 +32,12 @@ export const validationMessageUser = {
     ROOT_ACTIVATED: 'Usuario activado como root existosamente',
     ROOT_DEACTIVATE: 'Usuario desactivado como root existosamente',
     PASSWORD: 'Contraseña actualizada existosamente',
-    RESTORE_PASSWORD: 'Contraseña restaurada existosamente, su nueva contraseña se ha enviado a su correo',
+    RESTORE_PASSWORD:
+      'Contraseña restaurada existosamente, su nueva contraseña se ha enviado a su correo',
     UNLOCK: 'Cuenta desbloqueada existosamente',
     CODE: 'Código enviado al correo existosamente',
-    BLOCKED: 'Cuenta bloqueada, por favor seleccione la opción (Desbloquear Cuenta)',
+    BLOCKED:
+      'Cuenta bloqueada, por favor seleccione la opción (Desbloquear Cuenta)',
   },
 
   NOT_OK: {
@@ -57,7 +59,8 @@ export const validationMessageUser = {
   NOT_CONTENT: {
     USER: 'La cuenta no existe',
     USERS: 'No hay usuarios',
-    ACTIVE: 'Este usuario no esta activado, por favor comuníquese con el administrador',
+    ACTIVE:
+      'Este usuario no esta activado, por favor comuníquese con el administrador',
   },
 };
 

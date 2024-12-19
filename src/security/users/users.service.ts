@@ -52,7 +52,7 @@ export class UsersServices {
     private readonly dataSource: DataSource,
 
     private emailService: EmailService,
-  ) { }
+  ) {}
 
   @UseFilters(AllExceptionsFilter)
   async create(
@@ -193,9 +193,9 @@ export class UsersServices {
       password: undefined,
       group_description: user.group_description
         ? {
-          id: user.group_description.id,
-          name: user.group_description.description, // "description"
-        }
+            id: user.group_description.id,
+            name: user.group_description.description, // "description"
+          }
         : undefined, // Solo incluir el nombre y el ID de group_description si existe
     })) as (Users & {
       group_description: { id: number; name: string } | undefined;
@@ -379,13 +379,9 @@ export class UsersServices {
   async findOneByEmailWithPassword(email: string): Promise<Users | null> {
     return await this.usersRepository.findOne({
       where: { email },
-      relations: [
-        'group_description',
-        'group_description.groupPermission',
-      ],
+      relations: ['group_description', 'group_description.groupPermission'],
     });
   }
-
 
   @UseFilters(AllExceptionsFilter)
   async isActive(
@@ -534,29 +530,37 @@ export class UsersServices {
     data: UpdatePasswordUserDto,
     @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
-
     try {
-
       const user = await this.usersRepository.findOne({
         where: { id: request.user.id, is_active: true },
-      })
+      });
 
       if (!user) {
-        throw new ConflictException(validationMessageUser.NOT_CONTENT.USER)
+        throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
       }
 
       // Validar la contraseña actual proporcionada
-      const isPasswordValid = await bcryptjs.compare(data.currentPassword, user.password);
+      const isPasswordValid = await bcryptjs.compare(
+        data.currentPassword,
+        user.password,
+      );
 
       if (!isPasswordValid) {
-        throw new UnauthorizedException(validationMessageUser.CONFLICT.PASSWORD);
+        throw new UnauthorizedException(
+          validationMessageUser.CONFLICT.PASSWORD,
+        );
       }
 
       // Verificar que la nueva contraseña no sea igual a la anterior
-      const isNewPasswordSameAsOld = await bcryptjs.compare(data.password, user.password);
+      const isNewPasswordSameAsOld = await bcryptjs.compare(
+        data.password,
+        user.password,
+      );
 
       if (isNewPasswordSameAsOld) {
-        throw new ConflictException(validationMessageUser.CONFLICT.SAME_PASSWORD);
+        throw new ConflictException(
+          validationMessageUser.CONFLICT.SAME_PASSWORD,
+        );
       }
 
       const hashedPassword = await bcryptjs.hash(data.password, 10);
@@ -565,22 +569,19 @@ export class UsersServices {
       user.lastPasswordChange = new Date();
       const updatedUser = await this.usersRepository.save(user);
 
-
       return {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.PASSWORD,
         timestamp: new Date().toISOString(),
         path: request.url,
         data: {
-          "id": updatedUser.id,
-          "username": updatedUser.username,
-          "email": updatedUser.email
+          id: updatedUser.id,
+          username: updatedUser.username,
+          email: updatedUser.email,
         }, // Retornar el usuario actualizado
       };
     } catch (error) {
-
       console.log(error);
-
 
       if (
         error instanceof ConflictException ||
@@ -589,10 +590,7 @@ export class UsersServices {
         throw error;
       }
 
-      throw new InternalServerErrorException(error)
+      throw new InternalServerErrorException(error);
     }
-
-
-
   }
 }

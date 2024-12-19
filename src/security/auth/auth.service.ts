@@ -12,10 +12,16 @@ import * as bcryptjs from 'bcryptjs';
 import Users from '../users/entities/users.entity';
 import { UsersServices } from '../users/users.service';
 import { LoginDto } from './dto/login-auth.dto';
-import { validationMessageServer, validationMessageUser } from 'src/common/constants';
+import {
+  validationMessageServer,
+  validationMessageUser,
+} from 'src/common/constants';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AllExceptionsFilter, AllResponseFilter } from 'src/core/errors/all-exceptions.filter';
+import {
+  AllExceptionsFilter,
+  AllResponseFilter,
+} from 'src/core/errors/all-exceptions.filter';
 import { Request } from 'express'; // Importar Request
 import { UnlockAccountDto } from './dto/unlock-account.dto';
 import { SendEmailDto } from '../email/dtos/send-email.dto';
@@ -33,7 +39,7 @@ export class AuthService {
     private readonly usersService: UsersServices,
     private readonly jwtService: JwtService,
     private emailService: EmailService,
-  ) { }
+  ) {}
 
   async login({ email, password }: LoginDto): Promise<{
     token: string;
@@ -58,7 +64,9 @@ export class AuthService {
 
       // Si el usuario está bloqueado
       if (user.is_locked) {
-        throw new UnauthorizedException('Su cuenta está bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione "desbloquear cuenta');
+        throw new UnauthorizedException(
+          'Su cuenta está bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione "desbloquear cuenta',
+        );
       }
 
       // Verificar la contraseña
@@ -68,14 +76,14 @@ export class AuthService {
         // Incrementar el contador de intentos fallidos
         user.failed_attempts += 1;
 
-
-
         // Si los intentos fallidos llegan a 3, bloquear el usuario
         if (user.failed_attempts >= 3) {
           user.is_locked = true;
 
           await this.usersRepository.save(user); // Guarda el usuario actualizado
-          throw new UnauthorizedException('Su cuenta ha sido bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione "desbloquear cuenta"');
+          throw new UnauthorizedException(
+            'Su cuenta ha sido bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione "desbloquear cuenta"',
+          );
         }
 
         console.log(user.failed_attempts);
@@ -87,9 +95,7 @@ export class AuthService {
 
       // Si la contraseña es correcta, reiniciar el contador de intentos fallidos
       user.failed_attempts = 0;
-      await this.usersRepository.save(user)
-
-
+      await this.usersRepository.save(user);
 
       // Verifica si el grupo y los permisos están disponibles
       if (!user.group_description || !user.group_description.groupPermission) {
@@ -219,12 +225,17 @@ export class AuthService {
   @UseFilters(AllExceptionsFilter)
   async unlockAccount(
     @Req() request: Request,
-    data: UnlockAccountDto
+    data: UnlockAccountDto,
   ): Promise<Users | AllResponseFilter> {
     try {
-
       const userExist = await this.usersRepository.findOne({
-        where: { email: data.email, ci: data.ci, birthdate: data.birthdate, is_active: true, is_staff: true },
+        where: {
+          email: data.email,
+          ci: data.ci,
+          birthdate: data.birthdate,
+          is_active: true,
+          is_staff: true,
+        },
       });
 
       if (!userExist) {
@@ -232,11 +243,20 @@ export class AuthService {
       }
 
       const user = await this.usersRepository.findOne({
-        where: { email: data.email, ci: data.ci, birthdate: data.birthdate, is_active: true, is_staff: true, is_locked: true },
+        where: {
+          email: data.email,
+          ci: data.ci,
+          birthdate: data.birthdate,
+          is_active: true,
+          is_staff: true,
+          is_locked: true,
+        },
       });
 
       if (!user) {
-        throw new ConflictException('Este usuario no se encuentra bloqueado, puede iniciar sesión.');
+        throw new ConflictException(
+          'Este usuario no se encuentra bloqueado, puede iniciar sesión.',
+        );
       }
 
       // Resetear el estado de bloqueo
@@ -252,33 +272,34 @@ export class AuthService {
         path: request.url,
         data: {
           username: user.username,
-          email: user.email
+          email: user.email,
         }, // Retornar el usuario actualizado
       };
     } catch (error) {
       console.log(error);
 
-
-      if (
-        error instanceof ConflictException
-      ) {
+      if (error instanceof ConflictException) {
         throw error;
       }
 
-      throw new InternalServerErrorException(error)
-
+      throw new InternalServerErrorException(error);
     }
   }
 
   @UseFilters(AllExceptionsFilter)
   async resetCode(
     @Req() request: Request,
-    data: RecoveryCodeDto
+    data: RecoveryCodeDto,
   ): Promise<Users | AllResponseFilter> {
     try {
-
       const user = await this.usersRepository.findOne({
-        where: { email: data.email, ci: data.ci, birthdate: data.birthdate, is_active: true, is_staff: true },
+        where: {
+          email: data.email,
+          ci: data.ci,
+          birthdate: data.birthdate,
+          is_active: true,
+          is_staff: true,
+        },
       });
 
       if (!user) {
@@ -323,12 +344,11 @@ export class AuthService {
         path: request.url,
         data: {
           username: user.username,
-          email: user.email
+          email: user.email,
         }, // Retornar el usuario actualizado
       };
     } catch (error) {
       console.log(error);
-
 
       if (
         error instanceof ConflictException ||
@@ -337,20 +357,24 @@ export class AuthService {
         throw error;
       }
 
-      throw new InternalServerErrorException(error)
-
+      throw new InternalServerErrorException(error);
     }
   }
 
   @UseFilters(AllExceptionsFilter)
   async restorePassword(
     @Req() request: Request,
-    data: RestorePasswordDto
+    data: RestorePasswordDto,
   ): Promise<Users | AllResponseFilter> {
     try {
-
       const user = await this.usersRepository.findOne({
-        where: { email: data.email, ci: data.ci, birthdate: data.birthdate, is_active: true, is_staff: true },
+        where: {
+          email: data.email,
+          ci: data.ci,
+          birthdate: data.birthdate,
+          is_active: true,
+          is_staff: true,
+        },
       });
 
       if (!user) {
@@ -365,8 +389,10 @@ export class AuthService {
         throw new ConflictException(validationMessageUser.NOT_OK.CODE);
       }
 
-
-      const codeMatches = await bcryptjs.compare(data.recovery_code, user.recovery_code);
+      const codeMatches = await bcryptjs.compare(
+        data.recovery_code,
+        user.recovery_code,
+      );
 
       if (!codeMatches) {
         throw new UnauthorizedException(validationMessageUser.NOT_OK.CODE);
@@ -408,12 +434,11 @@ export class AuthService {
         path: request.url,
         data: {
           username: user.username,
-          email: user.email
+          email: user.email,
         }, // Retornar el usuario actualizado
       };
     } catch (error) {
       console.log(error);
-
 
       if (
         error instanceof ConflictException ||
@@ -422,12 +447,7 @@ export class AuthService {
         throw error;
       }
 
-      throw new InternalServerErrorException(error)
-
+      throw new InternalServerErrorException(error);
     }
   }
-
-
-
-
 }
