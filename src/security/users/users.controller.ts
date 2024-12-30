@@ -28,7 +28,7 @@ import { UpdatePasswordUserDto } from './dto/update-password-users.dto';
 @ApiTags('Account')
 @Controller('account')
 export class UsuariosController {
-  constructor(private readonly usersServices: UsersServices) {}
+  constructor(private readonly usersServices: UsersServices) { }
 
   @Post('create')
   @AuthWithProfiles([Profilee.ADMIN], { create: true })
@@ -104,5 +104,12 @@ export class UsuariosController {
     @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     return this.usersServices.changePassword(data, request);
+  }
+
+  @Get('filter/profile')
+  filterAccountData(
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
+    return this.usersServices.filterAccountData(request);
   }
 }

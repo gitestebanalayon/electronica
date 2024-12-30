@@ -1,10 +1,13 @@
 import {
   ConflictException,
+  ForbiddenException,
   HttpStatus,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
   Req,
   UnauthorizedException,
+  UnprocessableEntityException,
   UseFilters,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -39,7 +42,7 @@ export class AuthService {
     private readonly usersService: UsersServices,
     private readonly jwtService: JwtService,
     private emailService: EmailService,
-  ) {}
+  ) { }
 
   async login({ email, password }: LoginDto): Promise<{
     token: string;
@@ -200,7 +203,15 @@ export class AuthService {
 
       // En caso de no existir el usuario
       if (!user) {
-        throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
+        throw new NotFoundException(validationMessageUser.NOT_CONTENT.USER);
+      }
+
+      const userIsLocked = await this.usersRepository.findOne({
+        where: { ci: data.ci, email: data.email, birthdate: data.birthdate, is_locked: true },
+      });
+
+      if (userIsLocked) {
+        throw new ForbiddenException(validationMessageUser.OK.BLOCKED);
       }
 
       // Devolver la respuesta en formato estandarizado
@@ -212,7 +223,7 @@ export class AuthService {
         data: true,
       };
     } catch (error) {
-      if (error instanceof ConflictException) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
       }
 
@@ -239,7 +250,7 @@ export class AuthService {
       });
 
       if (!userExist) {
-        throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
+        throw new NotFoundException(validationMessageUser.NOT_CONTENT.USER);
       }
 
       const user = await this.usersRepository.findOne({
@@ -278,7 +289,7 @@ export class AuthService {
     } catch (error) {
       console.log(error);
 
-      if (error instanceof ConflictException) {
+      if (error instanceof ConflictException || error instanceof NotFoundException) {
         throw error;
       }
 
@@ -386,7 +397,7 @@ export class AuthService {
       }
 
       if (!user.recovery_code) {
-        throw new ConflictException(validationMessageUser.NOT_OK.CODE);
+        throw new UnprocessableEntityException(validationMessageUser.NOT_OK.CODE);
       }
 
       const codeMatches = await bcryptjs.compare(
@@ -395,7 +406,7 @@ export class AuthService {
       );
 
       if (!codeMatches) {
-        throw new UnauthorizedException(validationMessageUser.NOT_OK.CODE);
+        throw new UnprocessableEntityException(validationMessageUser.NOT_OK.CODE);
       }
 
       const generatePassword = Math.random().toString(36).slice(-8);
@@ -442,7 +453,8 @@ export class AuthService {
 
       if (
         error instanceof ConflictException ||
-        error instanceof UnauthorizedException
+        error instanceof UnauthorizedException ||
+        error instanceof UnprocessableEntityException
       ) {
         throw error;
       }

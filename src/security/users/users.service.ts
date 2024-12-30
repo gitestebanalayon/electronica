@@ -40,6 +40,8 @@ import {
 } from '../../common/constants/index';
 import { UpdatePasswordUserDto } from './dto/update-password-users.dto';
 
+import { omit } from 'lodash';
+
 @Injectable()
 export class UsersServices {
   constructor(
@@ -52,7 +54,7 @@ export class UsersServices {
     private readonly dataSource: DataSource,
 
     private emailService: EmailService,
-  ) {}
+  ) { }
 
   @UseFilters(AllExceptionsFilter)
   async create(
@@ -193,9 +195,9 @@ export class UsersServices {
       password: undefined,
       group_description: user.group_description
         ? {
-            id: user.group_description.id,
-            name: user.group_description.description, // "description"
-          }
+          id: user.group_description.id,
+          name: user.group_description.description, // "description"
+        }
         : undefined, // Solo incluir el nombre y el ID de group_description si existe
     })) as (Users & {
       group_description: { id: number; name: string } | undefined;
@@ -591,6 +593,44 @@ export class UsersServices {
       }
 
       throw new InternalServerErrorException(error);
+    }
+  }
+
+
+  @UseFilters(AllExceptionsFilter)
+  async filterAccountData(
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
+    try {
+      // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
+      const user = await this.usersRepository.findOne({
+        where: { id: request.user.id },
+      });
+
+      // En caso de no existir el usuario
+      if (!user) {
+        throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
+      }
+
+      // Excluir campos no deseados
+      const filteredUser = omit(user, ['id', 'code', 'lastPasswordChange', 'password', 'is_locked', 'failed_attempts', 'is_active', 'is_staff', 'is_root', 'recovery_code']);
+
+      // Devolver la respuesta en formato estandarizado
+      return {
+        statusCode: HttpStatus.OK,
+        message: validationMessageUser.OK.CONTENT,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+        data: filteredUser,
+      };
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        validationMessageServer.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }
