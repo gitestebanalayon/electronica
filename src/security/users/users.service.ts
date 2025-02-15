@@ -4,6 +4,7 @@ import {
   HttpStatus,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
   Req,
   UnauthorizedException,
   UseFilters,
@@ -20,6 +21,7 @@ import Group from '../group/entities/group.entity';
 // DTO
 import { CreateUserDto } from './dto/create-users.dto';
 import { UpdateUserDto } from './dto/update-users.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { FilterUserDto, ResponseUsersDto } from './dto/filter-user.dto';
 
 // MANEJO DE ERRORES GLOBALES
@@ -613,7 +615,7 @@ export class UsersServices {
       }
 
       // Excluir campos no deseados
-      const filteredUser = omit(user, ['id', 'code', 'lastPasswordChange', 'password', 'is_locked', 'failed_attempts', 'is_active', 'is_staff', 'is_root', 'recovery_code']);
+      const filteredUser = omit(user, ['code', 'lastPasswordChange', 'password', 'is_locked', 'failed_attempts', 'is_active', 'is_staff', 'is_root', 'recovery_code']);
 
       // Devolver la respuesta en formato estandarizado
       return {
@@ -631,6 +633,141 @@ export class UsersServices {
       throw new InternalServerErrorException(
         validationMessageServer.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  // @UseFilters(AllExceptionsFilter)
+  // async updateProfile(
+  //   data: UpdateProfileDto,
+  //   @Req() request: Request,
+  // ): Promise<Users | AllResponseFilter> {
+  //   // Iniciar una transacción con QueryRunner
+  //   // const queryRunner = this.dataSource.createQueryRunner();
+
+  //   // // Conectar y comenzar la transacción
+  //   // await queryRunner.connect();
+  //   // await queryRunner.startTransaction();
+
+  //   console.log(request.user);
+
+
+  //    try {
+  //   //   const user = await this.usersRepository.findOne({
+  //   //     where: {  },
+
+  //   //   });
+
+  //   //   // Validar si el usuario existe
+  //   //   if (!user) {
+  //   //     throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
+  //   //   }
+
+  //   //   // Validar email, cédula y username solo si se proporcionan
+  //   //   if (data.email || data.ci) {
+  //   //     // Crear condiciones para la búsqueda
+  //   //     const whereConditions = [];
+  //   //     if (data.email) {
+  //   //       whereConditions.push({ email: data.email, is_active: false });
+  //   //     }
+  //   //     if (data.ci) {
+  //   //       whereConditions.push({ ci: data.ci, is_active: false });
+  //   //     }
+
+  //   //     // Buscar usuarios que coincidan con las condiciones
+  //   //     const existingUser = await this.usersRepository.findOne({
+  //   //       where: whereConditions,
+  //   //     });
+
+  //   //     if (existingUser && existingUser.id !== id) {
+  //   //       // Determinar cuál de los campos tiene conflicto
+  //   //       let message = '';
+  //   //       if (existingUser.email === data.email) {
+  //   //         message = validationMessageUser.CONFLICT.EMAIL;
+  //   //       } else if (Number(existingUser.ci) === Number(data.ci)) {
+  //   //         message = validationMessageUser.CONFLICT.CI;
+  //   //       }
+  //   //       throw new ConflictException(message);
+  //   //     }
+  //   //   }
+
+  //   //   // Combinar los datos del objeto data con el objeto user
+  //   //   Object.assign(user, data);
+
+  //   //   // Guardar actualización con queryRunner
+  //   //   await queryRunner.manager.save(user);
+
+  //   //   // Confirmar la transacción
+  //   //   await queryRunner.commitTransaction();
+
+  //   //   // if (data.password) {
+  //   //   //   user.password = await bcryptjs.hash(
+  //   //   //     data.password,
+  //   //   //     await bcryptjs.genSalt(),
+  //   //   //   );
+  //   //   // }
+
+  //   //   // Obtener el usuario actualizado
+  //   //   const updatedUser = await this.usersRepository.findOne({
+  //   //     where: { id },
+  //   //   });
+
+  //     return {
+  //       statusCode: HttpStatus.OK,
+  //       message: validationMessageUser.OK.UPDATE,
+  //       timestamp: new Date().toISOString(),
+  //       path: request.url,
+  //       data: [], // Retornar el usuario actualizado
+  //     };
+  //   } catch (error) {
+  //     // Revertir la transacción en caso de un error
+  //     //await queryRunner.rollbackTransaction();
+  //     throw error; // Propagar el error
+  //   } finally {
+  //     // Liberar el queryRunner después de la transacción
+  //     //await queryRunner.release();
+  //   }
+  // }
+
+
+  async updateProfile(
+    data: UpdateProfileDto,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
+    try {
+      const user = await this.usersRepository.findOne({
+        where: { id: request.user.id, is_active: true },
+      });
+
+      if (!user) {
+        throw new NotFoundException(validationMessageUser.NOT_CONTENT.USER);
+      }
+
+      // Elimina la contraseña del objeto antes de retornarlo
+      const { email, password, is_active, is_staff, is_root, is_locked, recovery_code, lastPasswordChange, failed_attempts, code, ...userWithOutPassword } = user;
+
+      // Actualizar el usuario con los datos proporcionados
+      const response = await this.usersRepository.update(user.id, data);
+
+      console.log(response);
+
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: validationMessageUser.OK.UPDATE,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+        data: userWithOutPassword.username,
+      };
+    } catch (error) {
+      console.log(error);
+
+      if (
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(error);
     }
   }
 }

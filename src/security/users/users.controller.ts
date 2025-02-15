@@ -22,6 +22,7 @@ import { Profilee } from '../../common/enums/profile.enum.ts';
 import Users from './entities/users.entity';
 import { Request } from 'express';
 import { UpdatePasswordUserDto } from './dto/update-password-users.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -95,6 +96,7 @@ export class UsuariosController {
     return this.usersServices.isRoot(id, request);
   }
 
+  // Todos los roles pueden cambiar su contraseña
   @Put('update/password')
   @AuthWithProfiles([Profilee.ADMIN, Profilee.DIRECTOR, Profilee.USER], {
     update: true,
@@ -106,10 +108,31 @@ export class UsuariosController {
     return this.usersServices.changePassword(data, request);
   }
 
+  // Todos los roles pueden filtrar su perfil
   @Get('filter/profile')
+  @AuthWithProfiles([Profilee.ADMIN, Profilee.DIRECTOR, Profilee.USER], {
+    read: true,
+  })
   filterAccountData(
     @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     return this.usersServices.filterAccountData(request);
+  }
+
+  // @ApiQuery({
+  //   name: 'id',
+  //   required: false,
+  //   description: 'No es necesario enviar el id',
+  //   type: Number,
+  // })
+  @Put('update/profile')
+  @AuthWithProfiles([Profilee.ADMIN, Profilee.DIRECTOR, Profilee.USER], {
+    update: true,
+  })
+  async updateProfile(
+    @Body() data: UpdateProfileDto,
+    @Req() request: Request,
+  ): Promise<Users | AllResponseFilter> {
+    return this.usersServices.updateProfile(data, request);
   }
 }

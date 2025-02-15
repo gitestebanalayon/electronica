@@ -25,7 +25,7 @@ export const validationMessageUser = {
   OK: {
     CREATED: 'Usuario creado exitosamente',
     CONTENT: 'Usuario encontrado exitosamente',
-    UPDATE: 'Usuario actualizado exitosamente',
+    UPDATE: '¡Perfil actualizado exitosamente!',
     DELETE: 'Usuario eliminado exitosamente',
     ACTIVATED: 'Usuario activado exitosamente',
     DEACTIVATE: 'Usuario desactivado exitosamente',
