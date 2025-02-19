@@ -2,10 +2,10 @@ import {
   BadRequestException,
   ConflictException,
   HttpStatus,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-  Req,
   UnauthorizedException,
   UseFilters,
 } from '@nestjs/common';
@@ -43,6 +43,9 @@ import {
 import { UpdatePasswordUserDto } from './dto/update-password-users.dto';
 
 import { omit } from 'lodash';
+import { REQUEST } from '@nestjs/core';
+import * as jwt from 'jsonwebtoken';
+import { JwtPayload } from 'jsonwebtoken';
 
 @Injectable()
 export class UsersServices {
@@ -56,13 +59,12 @@ export class UsersServices {
     private readonly dataSource: DataSource,
 
     private emailService: EmailService,
-  ) { }
+
+    @Inject(REQUEST) private readonly request: Request,
+  ) {}
 
   @UseFilters(AllExceptionsFilter)
-  async create(
-    data: CreateUserDto,
-    @Req() request: Request,
-  ): Promise<AllResponseFilter> {
+  async create(data: CreateUserDto): Promise<AllResponseFilter> {
     try {
       // Verificar si ya existe un usuario activo con el mismo email
       const existingUserByEmail = await this.usersRepository.findOne({
@@ -140,7 +142,7 @@ export class UsersServices {
         statusCode: HttpStatus.CREATED,
         message: validationMessageUser.OK.CREATED,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: savedUser,
       };
     } catch (error) {
@@ -197,9 +199,9 @@ export class UsersServices {
       password: undefined,
       group_description: user.group_description
         ? {
-          id: user.group_description.id,
-          name: user.group_description.description, // "description"
-        }
+            id: user.group_description.id,
+            name: user.group_description.description, // "description"
+          }
         : undefined, // Solo incluir el nombre y el ID de group_description si existe
     })) as (Users & {
       group_description: { id: number; name: string } | undefined;
@@ -211,10 +213,7 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async findOne(
-    id: number,
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
+  async findOne(id: number): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
       const user = await this.usersRepository.findOne({
@@ -231,7 +230,7 @@ export class UsersServices {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.CONTENT,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: user,
       };
     } catch (error) {
@@ -249,7 +248,6 @@ export class UsersServices {
   async updateUser(
     id: number,
     data: UpdateUserDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     // Iniciar una transacción con QueryRunner
     const queryRunner = this.dataSource.createQueryRunner();
@@ -356,7 +354,7 @@ export class UsersServices {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.UPDATE,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: updatedUser, // Retornar el usuario actualizado
       };
     } catch (error) {
@@ -388,10 +386,7 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async isActive(
-    id: number,
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
+  async isActive(id: number): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID
       const existingUser = await this.usersRepository.findOneBy({ id });
@@ -410,7 +405,7 @@ export class UsersServices {
           statusCode: HttpStatus.OK,
           message: validationMessageUser.OK.ACTIVATED,
           timestamp: new Date().toISOString(),
-          path: request.url,
+          path: this.request.url,
           data: { is_active },
         };
       } else {
@@ -418,7 +413,7 @@ export class UsersServices {
           statusCode: HttpStatus.OK,
           message: validationMessageUser.OK.DEACTIVATE,
           timestamp: new Date().toISOString(),
-          path: request.url,
+          path: this.request.url,
           data: { is_active },
         };
       }
@@ -438,10 +433,7 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async isStaff(
-    id: number,
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
+  async isStaff(id: number): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID
       const existingUser = await this.usersRepository.findOneBy({ id });
@@ -460,7 +452,7 @@ export class UsersServices {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.CONTENT,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: { is_staff },
       };
     } catch (error) {
@@ -479,10 +471,7 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async isRoot(
-    id: number,
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
+  async isRoot(id: number): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID
       const existingUser = await this.usersRepository.findOneBy({ id });
@@ -502,7 +491,7 @@ export class UsersServices {
           statusCode: HttpStatus.OK,
           message: validationMessageUser.OK.ROOT_ACTIVATED,
           timestamp: new Date().toISOString(),
-          path: request.url,
+          path: this.request.url,
           data: { is_root }, // Retornar el nuevo valor de is_root
         };
       } else {
@@ -510,7 +499,7 @@ export class UsersServices {
           statusCode: HttpStatus.OK,
           message: validationMessageUser.OK.ROOT_DEACTIVATE,
           timestamp: new Date().toISOString(),
-          path: request.url,
+          path: this.request.url,
           data: { is_root }, // Retornar el nuevo valor de is_root
         };
       }
@@ -532,11 +521,24 @@ export class UsersServices {
   @UseFilters(AllExceptionsFilter)
   async changePassword(
     data: UpdatePasswordUserDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     try {
+      // Obtener el encabezado Authorization
+      const authHeader = this.request.headers['authorization'];
+      let decoded: JwtPayload;
+
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice(7, authHeader.length); // Extraemos el token
+
+        decoded = jwt.decode(token) as JwtPayload;
+      } else {
+        throw new ConflictException(
+          'No se ha proporcionado un token de autorización',
+        );
+      }
+
       const user = await this.usersRepository.findOne({
-        where: { id: request.user.id, is_active: true },
+        where: { id: decoded.id, is_active: true },
       });
 
       if (!user) {
@@ -577,7 +579,7 @@ export class UsersServices {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.PASSWORD,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: {
           id: updatedUser.id,
           username: updatedUser.username,
@@ -598,15 +600,26 @@ export class UsersServices {
     }
   }
 
-
   @UseFilters(AllExceptionsFilter)
-  async filterAccountData(
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
+  async filterAccountData(): Promise<Users | AllResponseFilter> {
     try {
+      // Obtener el encabezado Authorization
+      const authHeader = this.request.headers['authorization'];
+      let decoded: JwtPayload;
+
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice(7, authHeader.length); // Extraemos el token
+
+        decoded = jwt.decode(token) as JwtPayload;
+      } else {
+        throw new ConflictException(
+          'No se ha proporcionado un token de autorización',
+        );
+      }
+
       // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
       const user = await this.usersRepository.findOne({
-        where: { id: request.user.id },
+        where: { id: decoded.id },
       });
 
       // En caso de no existir el usuario
@@ -615,14 +628,24 @@ export class UsersServices {
       }
 
       // Excluir campos no deseados
-      const filteredUser = omit(user, ['code', 'lastPasswordChange', 'password', 'is_locked', 'failed_attempts', 'is_active', 'is_staff', 'is_root', 'recovery_code']);
+      const filteredUser = omit(user, [
+        'code',
+        'lastPasswordChange',
+        'password',
+        'is_locked',
+        'failed_attempts',
+        'is_active',
+        'is_staff',
+        'is_root',
+        'recovery_code',
+      ]);
 
       // Devolver la respuesta en formato estandarizado
       return {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.CONTENT,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: filteredUser,
       };
     } catch (error) {
@@ -636,134 +659,48 @@ export class UsersServices {
     }
   }
 
-  // @UseFilters(AllExceptionsFilter)
-  // async updateProfile(
-  //   data: UpdateProfileDto,
-  //   @Req() request: Request,
-  // ): Promise<Users | AllResponseFilter> {
-  //   // Iniciar una transacción con QueryRunner
-  //   // const queryRunner = this.dataSource.createQueryRunner();
-
-  //   // // Conectar y comenzar la transacción
-  //   // await queryRunner.connect();
-  //   // await queryRunner.startTransaction();
-
-  //   console.log(request.user);
-
-
-  //    try {
-  //   //   const user = await this.usersRepository.findOne({
-  //   //     where: {  },
-
-  //   //   });
-
-  //   //   // Validar si el usuario existe
-  //   //   if (!user) {
-  //   //     throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
-  //   //   }
-
-  //   //   // Validar email, cédula y username solo si se proporcionan
-  //   //   if (data.email || data.ci) {
-  //   //     // Crear condiciones para la búsqueda
-  //   //     const whereConditions = [];
-  //   //     if (data.email) {
-  //   //       whereConditions.push({ email: data.email, is_active: false });
-  //   //     }
-  //   //     if (data.ci) {
-  //   //       whereConditions.push({ ci: data.ci, is_active: false });
-  //   //     }
-
-  //   //     // Buscar usuarios que coincidan con las condiciones
-  //   //     const existingUser = await this.usersRepository.findOne({
-  //   //       where: whereConditions,
-  //   //     });
-
-  //   //     if (existingUser && existingUser.id !== id) {
-  //   //       // Determinar cuál de los campos tiene conflicto
-  //   //       let message = '';
-  //   //       if (existingUser.email === data.email) {
-  //   //         message = validationMessageUser.CONFLICT.EMAIL;
-  //   //       } else if (Number(existingUser.ci) === Number(data.ci)) {
-  //   //         message = validationMessageUser.CONFLICT.CI;
-  //   //       }
-  //   //       throw new ConflictException(message);
-  //   //     }
-  //   //   }
-
-  //   //   // Combinar los datos del objeto data con el objeto user
-  //   //   Object.assign(user, data);
-
-  //   //   // Guardar actualización con queryRunner
-  //   //   await queryRunner.manager.save(user);
-
-  //   //   // Confirmar la transacción
-  //   //   await queryRunner.commitTransaction();
-
-  //   //   // if (data.password) {
-  //   //   //   user.password = await bcryptjs.hash(
-  //   //   //     data.password,
-  //   //   //     await bcryptjs.genSalt(),
-  //   //   //   );
-  //   //   // }
-
-  //   //   // Obtener el usuario actualizado
-  //   //   const updatedUser = await this.usersRepository.findOne({
-  //   //     where: { id },
-  //   //   });
-
-  //     return {
-  //       statusCode: HttpStatus.OK,
-  //       message: validationMessageUser.OK.UPDATE,
-  //       timestamp: new Date().toISOString(),
-  //       path: request.url,
-  //       data: [], // Retornar el usuario actualizado
-  //     };
-  //   } catch (error) {
-  //     // Revertir la transacción en caso de un error
-  //     //await queryRunner.rollbackTransaction();
-  //     throw error; // Propagar el error
-  //   } finally {
-  //     // Liberar el queryRunner después de la transacción
-  //     //await queryRunner.release();
-  //   }
-  // }
-
-
   async updateProfile(
     data: UpdateProfileDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     try {
+      // Obtener el encabezado Authorization
+      const authHeader = this.request.headers['authorization'];
+      let decoded: JwtPayload;
+
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice(7, authHeader.length); // Extraemos el token
+
+        decoded = jwt.decode(token) as JwtPayload;
+      } else {
+        throw new ConflictException(
+          'No se ha proporcionado un token de autorización',
+        );
+      }
+
       const user = await this.usersRepository.findOne({
-        where: { id: request.user.id, is_active: true },
+        where: { id: decoded.id, is_active: true },
       });
 
       if (!user) {
         throw new NotFoundException(validationMessageUser.NOT_CONTENT.USER);
       }
 
-      // Elimina la contraseña del objeto antes de retornarlo
-      const { email, password, is_active, is_staff, is_root, is_locked, recovery_code, lastPasswordChange, failed_attempts, code, ...userWithOutPassword } = user;
-
       // Actualizar el usuario con los datos proporcionados
       const response = await this.usersRepository.update(user.id, data);
 
       console.log(response);
 
-
       return {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.UPDATE,
         timestamp: new Date().toISOString(),
-        path: request.url,
-        data: userWithOutPassword.username,
+        path: this.request.url,
+        data: user.username,
       };
     } catch (error) {
       console.log(error);
 
-      if (
-        error instanceof NotFoundException
-      ) {
+      if (error instanceof NotFoundException) {
         throw error;
       }
 

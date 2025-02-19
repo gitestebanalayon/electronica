@@ -7,7 +7,6 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
@@ -20,7 +19,6 @@ import { JwtAuthGuard } from '../auth/guard/auth.guard';
 import { AuthWithProfiles } from '../auth/decorators/auth.decorator';
 import { Profilee } from '../../common/enums/profile.enum.ts';
 import Users from './entities/users.entity';
-import { Request } from 'express';
 import { UpdatePasswordUserDto } from './dto/update-password-users.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
@@ -29,15 +27,12 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 @ApiTags('Account')
 @Controller('account')
 export class UsuariosController {
-  constructor(private readonly usersServices: UsersServices) { }
+  constructor(private readonly usersServices: UsersServices) {}
 
   @Post('create')
   @AuthWithProfiles([Profilee.ADMIN], { create: true })
-  create(
-    @Body() data: CreateUserDto,
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
-    return this.usersServices.create(data, request);
+  create(@Body() data: CreateUserDto): Promise<Users | AllResponseFilter> {
+    return this.usersServices.create(data);
   }
 
   @Get('read')
@@ -52,11 +47,8 @@ export class UsuariosController {
 
   @Get('filter:id')
   @AuthWithProfiles([Profilee.ADMIN], { read: true })
-  findOne(
-    @Param('id') id: number,
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
-    return this.usersServices.findOne(id, request);
+  findOne(@Param('id') id: number): Promise<Users | AllResponseFilter> {
+    return this.usersServices.findOne(id);
   }
 
   @Patch('update/:id')
@@ -64,36 +56,26 @@ export class UsuariosController {
   async updateUser(
     @Param('id') userId: number,
     @Body() data: UpdateUserDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
-    return this.usersServices.updateUser(userId, data, request);
+    return this.usersServices.updateUser(userId, data);
   }
 
   @Put('is_active/:id')
   @AuthWithProfiles([Profilee.ADMIN], { delete: true })
-  isActiveUser(
-    @Param('id') id: number,
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
-    return this.usersServices.isActive(id, request);
+  isActiveUser(@Param('id') id: number): Promise<Users | AllResponseFilter> {
+    return this.usersServices.isActive(id);
   }
 
   @Put('is_staff/:id')
   @AuthWithProfiles([Profilee.ADMIN], { update: true })
-  isStaffUser(
-    @Param('id') id: number,
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
-    return this.usersServices.isStaff(id, request);
+  isStaffUser(@Param('id') id: number): Promise<Users | AllResponseFilter> {
+    return this.usersServices.isStaff(id);
   }
 
   @Put('is_root/:id')
   @AuthWithProfiles([Profilee.ADMIN], { update: true })
-  isRootUser(
-    @Param('id') id: number,
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
-    return this.usersServices.isRoot(id, request);
+  isRootUser(@Param('id') id: number): Promise<Users | AllResponseFilter> {
+    return this.usersServices.isRoot(id);
   }
 
   // Todos los roles pueden cambiar su contraseña
@@ -103,9 +85,8 @@ export class UsuariosController {
   })
   async changePassword(
     @Body() data: UpdatePasswordUserDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
-    return this.usersServices.changePassword(data, request);
+    return this.usersServices.changePassword(data);
   }
 
   // Todos los roles pueden filtrar su perfil
@@ -113,10 +94,8 @@ export class UsuariosController {
   @AuthWithProfiles([Profilee.ADMIN, Profilee.DIRECTOR, Profilee.USER], {
     read: true,
   })
-  filterAccountData(
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
-    return this.usersServices.filterAccountData(request);
+  filterAccountData(): Promise<Users | AllResponseFilter> {
+    return this.usersServices.filterAccountData();
   }
 
   // @ApiQuery({
@@ -125,14 +104,14 @@ export class UsuariosController {
   //   description: 'No es necesario enviar el id',
   //   type: Number,
   // })
+
   @Put('update/profile')
   @AuthWithProfiles([Profilee.ADMIN, Profilee.DIRECTOR, Profilee.USER], {
     update: true,
   })
   async updateProfile(
     @Body() data: UpdateProfileDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
-    return this.usersServices.updateProfile(data, request);
+    return this.usersServices.updateProfile(data);
   }
 }

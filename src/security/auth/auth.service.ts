@@ -42,7 +42,7 @@ export class AuthService {
     private readonly usersService: UsersServices,
     private readonly jwtService: JwtService,
     private emailService: EmailService,
-  ) { }
+  ) {}
 
   async login({ email, password }: LoginDto): Promise<{
     token: string;
@@ -207,7 +207,12 @@ export class AuthService {
       }
 
       const userIsLocked = await this.usersRepository.findOne({
-        where: { ci: data.ci, email: data.email, birthdate: data.birthdate, is_locked: true },
+        where: {
+          ci: data.ci,
+          email: data.email,
+          birthdate: data.birthdate,
+          is_locked: true,
+        },
       });
 
       if (userIsLocked) {
@@ -223,7 +228,10 @@ export class AuthService {
         data: true,
       };
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
         throw error;
       }
 
@@ -289,7 +297,10 @@ export class AuthService {
     } catch (error) {
       console.log(error);
 
-      if (error instanceof ConflictException || error instanceof NotFoundException) {
+      if (
+        error instanceof ConflictException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
 
@@ -397,7 +408,9 @@ export class AuthService {
       }
 
       if (!user.recovery_code) {
-        throw new UnprocessableEntityException(validationMessageUser.NOT_OK.CODE);
+        throw new UnprocessableEntityException(
+          validationMessageUser.NOT_OK.CODE,
+        );
       }
 
       const codeMatches = await bcryptjs.compare(
@@ -406,7 +419,9 @@ export class AuthService {
       );
 
       if (!codeMatches) {
-        throw new UnprocessableEntityException(validationMessageUser.NOT_OK.CODE);
+        throw new UnprocessableEntityException(
+          validationMessageUser.NOT_OK.CODE,
+        );
       }
 
       const generatePassword = Math.random().toString(36).slice(-8);
