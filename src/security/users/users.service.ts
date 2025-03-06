@@ -61,7 +61,7 @@ export class UsersServices {
     private emailService: EmailService,
 
     @Inject(REQUEST) private readonly request: Request,
-  ) { }
+  ) {}
 
   @UseFilters(AllExceptionsFilter)
   async create(data: CreateUserDto): Promise<AllResponseFilter> {
@@ -199,9 +199,9 @@ export class UsersServices {
       password: undefined,
       group_description: user.group_description
         ? {
-          id: user.group_description.id,
-          name: user.group_description.description, // "description"
-        }
+            id: user.group_description.id,
+            name: user.group_description.description, // "description"
+          }
         : undefined, // Solo incluir el nombre y el ID de group_description si existe
     })) as (Users & {
       group_description: { id: number; name: string } | undefined;
