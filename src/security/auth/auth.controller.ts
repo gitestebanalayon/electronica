@@ -31,7 +31,7 @@ export interface AuthenticatedUser {
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authServices: AuthService) { }
+  constructor(private readonly authServices: AuthService) {}
 
   @HttpCode(HttpStatus.OK)
   @Post('login')

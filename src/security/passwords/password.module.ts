@@ -16,4 +16,4 @@ import Password from './entities/password.entity';
   exports: [PasswordService, TypeOrmModule],
   controllers: [PasswordController],
 })
-export class PasswordModule { }
+export class PasswordModule {}

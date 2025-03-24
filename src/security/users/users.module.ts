@@ -19,4 +19,4 @@ import Password from '../passwords/entities/password.entity';
   providers: [UsersServices],
   exports: [UsersServices, TypeOrmModule],
 })
-export class UsersModule { }
+export class UsersModule {}

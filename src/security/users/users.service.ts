@@ -65,7 +65,7 @@ export class UsersServices {
     private emailService: EmailService,
 
     @Inject(REQUEST) private readonly request: Request,
-  ) { }
+  ) {}
 
   @UseFilters(AllExceptionsFilter)
   async create(data: CreateUserDto): Promise<AllResponseFilter> {
@@ -151,7 +151,6 @@ export class UsersServices {
       } catch (emailError) {
         console.log(emailError);
 
-
         throw new InternalServerErrorException(
           `Error al enviar el correo a ${data.email}: ${emailError.message}`,
           emailError.stack,
@@ -227,9 +226,9 @@ export class UsersServices {
       ...user,
       group_description: user.group_description
         ? {
-          id: user.group_description.id,
-          name: user.group_description.description, // "description"
-        }
+            id: user.group_description.id,
+            name: user.group_description.description, // "description"
+          }
         : undefined, // Solo incluir el nombre y el ID de group_description si existe
     })) as (Users & {
       group_description: { id: number; name: string } | undefined;
@@ -418,13 +417,12 @@ export class UsersServices {
     return await this.passwordRepository.findOne({
       where: {
         users: {
-          id: id
+          id: id,
         },
-        status: true
-      }
-    })
+        status: true,
+      },
+    });
   }
-
 
   @UseFilters(AllExceptionsFilter)
   async isActive(id: number): Promise<Users | AllResponseFilter> {
@@ -593,9 +591,7 @@ export class UsersServices {
       );
 
       if (!isPasswordValid) {
-        throw new ConflictException(
-          validationMessageUser.CONFLICT.PASSWORD,
-        );
+        throw new ConflictException(validationMessageUser.CONFLICT.PASSWORD);
       }
 
       // Verificar que la nueva contraseña no sea igual a la anterior

@@ -7,5 +7,4 @@ export class CreatePasswordDto {
   @IsString({ message: validationMessageTypes.IS_STRING })
   @MaxLength(255)
   description: string;
-
 }

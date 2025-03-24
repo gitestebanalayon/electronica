@@ -37,8 +37,10 @@ export const validationMessageUser = {
     RESTORE_GMAIL: 'Su correo a sido restaurado existosamente',
     UNLOCK: 'Cuenta desbloqueada existosamente',
     CODE: 'Código enviado al correo existosamente',
-    BLOCKED: 'Cuenta bloqueada, por favor seleccione la opción (Desbloquear Cuenta) o comuníquese con el administrador',
-    BLOCKED_USER: 'Su cuenta está bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione (Desbloquear Cuenta) o comuníquese con el administrador',
+    BLOCKED:
+      'Cuenta bloqueada, por favor seleccione la opción (Desbloquear Cuenta) o comuníquese con el administrador',
+    BLOCKED_USER:
+      'Su cuenta está bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione (Desbloquear Cuenta) o comuníquese con el administrador',
   },
 
   NOT_OK: {

@@ -7,7 +7,6 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -25,7 +24,7 @@ export default class Password {
 
   @Column('boolean', { name: 'status', default: false })
   status: boolean;
-  
+
   @Column('boolean', { name: 'is_deleted', default: false })
   is_deleted: boolean;
 

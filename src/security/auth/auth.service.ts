@@ -58,7 +58,9 @@ export class AuthService {
       const userPasswords = await this.usersService.findAllPassword(user.id);
 
       if (!userPasswords) {
-        throw new UnauthorizedException(validationMessageUser.NOT_CONTENT.USER_PASSWORD);
+        throw new UnauthorizedException(
+          validationMessageUser.NOT_CONTENT.USER_PASSWORD,
+        );
       }
 
       if (!user) {
@@ -81,7 +83,10 @@ export class AuthService {
       }
 
       // Verificar la contraseña
-      const passwordMatches = await bcryptjs.compare(password, userPasswords.password);
+      const passwordMatches = await bcryptjs.compare(
+        password,
+        userPasswords.password,
+      );
 
       if (!passwordMatches) {
         // Incrementar el contador de intentos fallidos
@@ -92,12 +97,16 @@ export class AuthService {
           user.is_locked = true;
 
           await this.usersRepository.save(user); // Guarda el usuario actualizado
-          throw new UnauthorizedException(validationMessageUser.OK.BLOCKED_USER);
+          throw new UnauthorizedException(
+            validationMessageUser.OK.BLOCKED_USER,
+          );
         }
 
         // Guardar el usuario con el contador de intentos fallidos actualizado
         await this.usersRepository.save(user);
-        throw new UnauthorizedException(`Contraseña incorrecta. Intento ${user.failed_attempts} de 3`);
+        throw new UnauthorizedException(
+          `Contraseña incorrecta. Intento ${user.failed_attempts} de 3`,
+        );
       }
 
       // Si la contraseña es correcta, reiniciar el contador de intentos fallidos
@@ -168,7 +177,9 @@ export class AuthService {
       }
 
       // Si es otro error, lanza un InternalServerErrorException o similar
-      throw new InternalServerErrorException(validationMessageServer.INTERNAL_SERVER_ERROR);
+      throw new InternalServerErrorException(
+        validationMessageServer.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -193,9 +204,7 @@ export class AuthService {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async findOne(
-    data: FilterUserDto,
-  ): Promise<Users | AllResponseFilter> {
+  async findOne(data: FilterUserDto): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
       const user = await this.usersRepository.findOne({
@@ -309,9 +318,7 @@ export class AuthService {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async resetCode(
-    data: RecoveryCodeDto,
-  ): Promise<Users | AllResponseFilter> {
+  async resetCode(data: RecoveryCodeDto): Promise<Users | AllResponseFilter> {
     try {
       const user = await this.usersRepository.findOne({
         where: {
@@ -560,9 +567,7 @@ export class AuthService {
     } catch (error) {
       console.log(error);
 
-      if (
-        error instanceof ConflictException
-      ) {
+      if (error instanceof ConflictException) {
         throw error;
       }
 
