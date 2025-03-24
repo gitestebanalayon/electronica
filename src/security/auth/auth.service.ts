@@ -46,7 +46,7 @@ export class AuthService {
     private readonly emailService: EmailService,
 
     @Inject(REQUEST) private readonly request: Request,
-  ) { }
+  ) {}
 
   async login({ email, password }: LoginDto): Promise<{
     token: string;
