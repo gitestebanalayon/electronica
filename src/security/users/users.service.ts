@@ -2,10 +2,10 @@ import {
   BadRequestException,
   ConflictException,
   HttpStatus,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-  Req,
   UnauthorizedException,
   UseFilters,
 } from '@nestjs/common';
@@ -43,6 +43,10 @@ import {
 import { UpdatePasswordUserDto } from './dto/update-password-users.dto';
 
 import { omit } from 'lodash';
+import { REQUEST } from '@nestjs/core';
+import * as jwt from 'jsonwebtoken';
+import { JwtPayload } from 'jsonwebtoken';
+import Password from '../passwords/entities/password.entity';
 
 @Injectable()
 export class UsersServices {
@@ -53,16 +57,23 @@ export class UsersServices {
     @InjectRepository(Group)
     private readonly groupRepository: Repository<Group>,
 
+    @InjectRepository(Password)
+    private readonly passwordRepository: Repository<Password>,
+
     private readonly dataSource: DataSource,
 
     private emailService: EmailService,
+
+    @Inject(REQUEST) private readonly request: Request,
   ) { }
 
   @UseFilters(AllExceptionsFilter)
-  async create(
-    data: CreateUserDto,
-    @Req() request: Request,
-  ): Promise<AllResponseFilter> {
+  async create(data: CreateUserDto): Promise<AllResponseFilter> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       // Verificar si ya existe un usuario activo con el mismo email
       const existingUserByEmail = await this.usersRepository.findOne({
@@ -72,7 +83,7 @@ export class UsersServices {
         throw new ConflictException(validationMessageUser.CONFLICT.EMAIL);
       }
 
-      // Verificar si ya existe un usuario activo con el mismo usuario
+      // Verificar si ya existe un usuario activo con el mismo username
       const existingUserByUsername = await this.usersRepository.findOne({
         where: { username: data.username, is_active: true },
       });
@@ -88,7 +99,7 @@ export class UsersServices {
         throw new ConflictException(validationMessageUser.CONFLICT.CI);
       }
 
-      // Verificar si el group existe
+      // Verificar si el grupo existe
       const group = await this.groupRepository.findOne({
         where: { id: data.group_description_id, is_deleted: false },
       });
@@ -96,30 +107,11 @@ export class UsersServices {
         throw new ConflictException(validationMessageGroup.NOT_CONTENT.GROUP);
       }
 
+      // Generar contraseña aleatoria
       const generatedPassword = Math.random().toString(36).slice(-8);
       const hashedPassword = await bcryptjs.hash(generatedPassword, 10);
 
-      // Preparar los datos del correo
-      const sendEmailDto: SendEmailDto = {
-        from: 'serviciosesteban953@gmail.com',
-        subjectEmail: 'Bienvenido',
-        sendTo: data.email,
-        template: 'welcome',
-        params: { password: generatedPassword, username: data.username },
-      };
-
-      // Intentar enviar el correo
-      try {
-        await this.emailService.sendEmail(sendEmailDto);
-      } catch (emailError) {
-        // Lanzar excepción si falla el envío del correo
-        throw new InternalServerErrorException(
-          `Error al enviar el correo a ${data.email}: ${emailError.message}`,
-          emailError.stack,
-        );
-      }
-
-      // Crear y guardar el usuario solo si el correo se envió con éxito
+      // Crear el usuario
       const user = new Users();
       user.code = data.origen + data.ci;
       user.username = data.username;
@@ -128,22 +120,58 @@ export class UsersServices {
       user.ci = data.ci;
       user.first_name = data.first_name;
       user.last_name = data.last_name;
-      user.password = hashedPassword;
       user.phone = data.phone;
       user.failed_attempts = data.failed_attempts;
       user.birthdate = data.birthdate;
       user.group_description = group;
+      // user.password = hashedPassword; // Guardar la contraseña hasheada en el usuario
 
-      const savedUser = await this.usersRepository.save(user);
+      // Guardar el usuario
+      const savedUser = await queryRunner.manager.save(user);
+
+      // Crear y guardar la contraseña en la tabla password
+      const password = new Password();
+      password.password = hashedPassword; // Guardar la contraseña hasheada
+      password.users = savedUser; // Asignar el usuario
+      password.status = true; // Establecer la contraseña como principal
+
+      await queryRunner.manager.save(password);
+
+      // Enviar correo con la contraseña generada
+      const sendEmailDto: SendEmailDto = {
+        from: 'serviciosesteban953@gmail.com',
+        subjectEmail: 'Bienvenido',
+        sendTo: data.email,
+        template: 'welcome',
+        params: { password: generatedPassword, username: data.username },
+      };
+
+      try {
+        await this.emailService.sendEmail(sendEmailDto);
+      } catch (emailError) {
+        console.log(emailError);
+
+
+        throw new InternalServerErrorException(
+          `Error al enviar el correo a ${data.email}: ${emailError.message}`,
+          emailError.stack,
+        );
+      }
+
+      // Confirmar la transacción
+      await queryRunner.commitTransaction();
 
       return {
         statusCode: HttpStatus.CREATED,
         message: validationMessageUser.OK.CREATED,
         timestamp: new Date().toISOString(),
-        path: request.url,
-        data: savedUser,
+        path: this.request.url,
+        data: savedUser.email,
       };
     } catch (error) {
+      // Revertir la transacción en caso de error
+      await queryRunner.rollbackTransaction();
+
       if (
         error instanceof BadRequestException ||
         error instanceof ConflictException ||
@@ -155,6 +183,9 @@ export class UsersServices {
       throw new InternalServerErrorException(
         validationMessageServer.INTERNAL_SERVER_ERROR,
       );
+    } finally {
+      // Liberar el QueryRunner
+      await queryRunner.release();
     }
   }
 
@@ -194,7 +225,6 @@ export class UsersServices {
     // Mapeo para incluir el nombre y el ID de group_description y state, omitiendo la contraseña
     const mappedData = data.map((user) => ({
       ...user,
-      password: undefined,
       group_description: user.group_description
         ? {
           id: user.group_description.id,
@@ -211,10 +241,7 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async findOne(
-    id: number,
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
+  async findOne(id: number): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
       const user = await this.usersRepository.findOne({
@@ -231,7 +258,7 @@ export class UsersServices {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.CONTENT,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: user,
       };
     } catch (error) {
@@ -249,7 +276,6 @@ export class UsersServices {
   async updateUser(
     id: number,
     data: UpdateUserDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     // Iniciar una transacción con QueryRunner
     const queryRunner = this.dataSource.createQueryRunner();
@@ -356,7 +382,7 @@ export class UsersServices {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.UPDATE,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: updatedUser, // Retornar el usuario actualizado
       };
     } catch (error) {
@@ -388,10 +414,20 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async isActive(
-    id: number,
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
+  async findAllPassword(id: number): Promise<Password | null> {
+    return await this.passwordRepository.findOne({
+      where: {
+        users: {
+          id: id
+        },
+        status: true
+      }
+    })
+  }
+
+
+  @UseFilters(AllExceptionsFilter)
+  async isActive(id: number): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID
       const existingUser = await this.usersRepository.findOneBy({ id });
@@ -410,7 +446,7 @@ export class UsersServices {
           statusCode: HttpStatus.OK,
           message: validationMessageUser.OK.ACTIVATED,
           timestamp: new Date().toISOString(),
-          path: request.url,
+          path: this.request.url,
           data: { is_active },
         };
       } else {
@@ -418,7 +454,7 @@ export class UsersServices {
           statusCode: HttpStatus.OK,
           message: validationMessageUser.OK.DEACTIVATE,
           timestamp: new Date().toISOString(),
-          path: request.url,
+          path: this.request.url,
           data: { is_active },
         };
       }
@@ -438,10 +474,7 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async isStaff(
-    id: number,
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
+  async isStaff(id: number): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID
       const existingUser = await this.usersRepository.findOneBy({ id });
@@ -460,7 +493,7 @@ export class UsersServices {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.CONTENT,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: { is_staff },
       };
     } catch (error) {
@@ -479,10 +512,7 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async isRoot(
-    id: number,
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
+  async isRoot(id: number): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID
       const existingUser = await this.usersRepository.findOneBy({ id });
@@ -502,7 +532,7 @@ export class UsersServices {
           statusCode: HttpStatus.OK,
           message: validationMessageUser.OK.ROOT_ACTIVATED,
           timestamp: new Date().toISOString(),
-          path: request.url,
+          path: this.request.url,
           data: { is_root }, // Retornar el nuevo valor de is_root
         };
       } else {
@@ -510,7 +540,7 @@ export class UsersServices {
           statusCode: HttpStatus.OK,
           message: validationMessageUser.OK.ROOT_DEACTIVATE,
           timestamp: new Date().toISOString(),
-          path: request.url,
+          path: this.request.url,
           data: { is_root }, // Retornar el nuevo valor de is_root
         };
       }
@@ -532,11 +562,24 @@ export class UsersServices {
   @UseFilters(AllExceptionsFilter)
   async changePassword(
     data: UpdatePasswordUserDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     try {
+      // Obtener el encabezado Authorization
+      const authHeader = this.request.headers['authorization'];
+      let decoded: JwtPayload;
+
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice(7, authHeader.length); // Extraemos el token
+
+        decoded = jwt.decode(token) as JwtPayload;
+      } else {
+        throw new ConflictException(
+          'No se ha proporcionado un token de autorización',
+        );
+      }
+
       const user = await this.usersRepository.findOne({
-        where: { id: request.user.id, is_active: true },
+        where: { id: decoded.id, is_active: true },
       });
 
       if (!user) {
@@ -546,11 +589,11 @@ export class UsersServices {
       // Validar la contraseña actual proporcionada
       const isPasswordValid = await bcryptjs.compare(
         data.currentPassword,
-        user.password,
+        user.password_id.password,
       );
 
       if (!isPasswordValid) {
-        throw new UnauthorizedException(
+        throw new ConflictException(
           validationMessageUser.CONFLICT.PASSWORD,
         );
       }
@@ -558,7 +601,7 @@ export class UsersServices {
       // Verificar que la nueva contraseña no sea igual a la anterior
       const isNewPasswordSameAsOld = await bcryptjs.compare(
         data.password,
-        user.password,
+        user.password_id.password,
       );
 
       if (isNewPasswordSameAsOld) {
@@ -569,7 +612,7 @@ export class UsersServices {
 
       const hashedPassword = await bcryptjs.hash(data.password, 10);
       // Actualizar la contraseña en el usuario
-      user.password = hashedPassword;
+      user.password_id.password = hashedPassword;
       user.lastPasswordChange = new Date();
       const updatedUser = await this.usersRepository.save(user);
 
@@ -577,7 +620,7 @@ export class UsersServices {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.PASSWORD,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: {
           id: updatedUser.id,
           username: updatedUser.username,
@@ -598,15 +641,26 @@ export class UsersServices {
     }
   }
 
-
   @UseFilters(AllExceptionsFilter)
-  async filterAccountData(
-    @Req() request: Request,
-  ): Promise<Users | AllResponseFilter> {
+  async filterAccountData(): Promise<Users | AllResponseFilter> {
     try {
+      // Obtener el encabezado Authorization
+      const authHeader = this.request.headers['authorization'];
+      let decoded: JwtPayload;
+
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice(7, authHeader.length); // Extraemos el token
+
+        decoded = jwt.decode(token) as JwtPayload;
+      } else {
+        throw new ConflictException(
+          'No se ha proporcionado un token de autorización',
+        );
+      }
+
       // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
       const user = await this.usersRepository.findOne({
-        where: { id: request.user.id },
+        where: { id: decoded.id },
       });
 
       // En caso de no existir el usuario
@@ -615,14 +669,24 @@ export class UsersServices {
       }
 
       // Excluir campos no deseados
-      const filteredUser = omit(user, ['code', 'lastPasswordChange', 'password', 'is_locked', 'failed_attempts', 'is_active', 'is_staff', 'is_root', 'recovery_code']);
+      const filteredUser = omit(user, [
+        'code',
+        'lastPasswordChange',
+        'password',
+        'is_locked',
+        'failed_attempts',
+        'is_active',
+        'is_staff',
+        'is_root',
+        'recovery_code',
+      ]);
 
       // Devolver la respuesta en formato estandarizado
       return {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.CONTENT,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: filteredUser,
       };
     } catch (error) {
@@ -636,134 +700,49 @@ export class UsersServices {
     }
   }
 
-  // @UseFilters(AllExceptionsFilter)
-  // async updateProfile(
-  //   data: UpdateProfileDto,
-  //   @Req() request: Request,
-  // ): Promise<Users | AllResponseFilter> {
-  //   // Iniciar una transacción con QueryRunner
-  //   // const queryRunner = this.dataSource.createQueryRunner();
-
-  //   // // Conectar y comenzar la transacción
-  //   // await queryRunner.connect();
-  //   // await queryRunner.startTransaction();
-
-  //   console.log(request.user);
-
-
-  //    try {
-  //   //   const user = await this.usersRepository.findOne({
-  //   //     where: {  },
-
-  //   //   });
-
-  //   //   // Validar si el usuario existe
-  //   //   if (!user) {
-  //   //     throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
-  //   //   }
-
-  //   //   // Validar email, cédula y username solo si se proporcionan
-  //   //   if (data.email || data.ci) {
-  //   //     // Crear condiciones para la búsqueda
-  //   //     const whereConditions = [];
-  //   //     if (data.email) {
-  //   //       whereConditions.push({ email: data.email, is_active: false });
-  //   //     }
-  //   //     if (data.ci) {
-  //   //       whereConditions.push({ ci: data.ci, is_active: false });
-  //   //     }
-
-  //   //     // Buscar usuarios que coincidan con las condiciones
-  //   //     const existingUser = await this.usersRepository.findOne({
-  //   //       where: whereConditions,
-  //   //     });
-
-  //   //     if (existingUser && existingUser.id !== id) {
-  //   //       // Determinar cuál de los campos tiene conflicto
-  //   //       let message = '';
-  //   //       if (existingUser.email === data.email) {
-  //   //         message = validationMessageUser.CONFLICT.EMAIL;
-  //   //       } else if (Number(existingUser.ci) === Number(data.ci)) {
-  //   //         message = validationMessageUser.CONFLICT.CI;
-  //   //       }
-  //   //       throw new ConflictException(message);
-  //   //     }
-  //   //   }
-
-  //   //   // Combinar los datos del objeto data con el objeto user
-  //   //   Object.assign(user, data);
-
-  //   //   // Guardar actualización con queryRunner
-  //   //   await queryRunner.manager.save(user);
-
-  //   //   // Confirmar la transacción
-  //   //   await queryRunner.commitTransaction();
-
-  //   //   // if (data.password) {
-  //   //   //   user.password = await bcryptjs.hash(
-  //   //   //     data.password,
-  //   //   //     await bcryptjs.genSalt(),
-  //   //   //   );
-  //   //   // }
-
-  //   //   // Obtener el usuario actualizado
-  //   //   const updatedUser = await this.usersRepository.findOne({
-  //   //     where: { id },
-  //   //   });
-
-  //     return {
-  //       statusCode: HttpStatus.OK,
-  //       message: validationMessageUser.OK.UPDATE,
-  //       timestamp: new Date().toISOString(),
-  //       path: request.url,
-  //       data: [], // Retornar el usuario actualizado
-  //     };
-  //   } catch (error) {
-  //     // Revertir la transacción en caso de un error
-  //     //await queryRunner.rollbackTransaction();
-  //     throw error; // Propagar el error
-  //   } finally {
-  //     // Liberar el queryRunner después de la transacción
-  //     //await queryRunner.release();
-  //   }
-  // }
-
-
+  @UseFilters(AllExceptionsFilter)
   async updateProfile(
     data: UpdateProfileDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     try {
+      // Obtener el encabezado Authorization
+      const authHeader = this.request.headers['authorization'];
+      let decoded: JwtPayload;
+
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice(7, authHeader.length); // Extraemos el token
+
+        decoded = jwt.decode(token) as JwtPayload;
+      } else {
+        throw new ConflictException(
+          'No se ha proporcionado un token de autorización',
+        );
+      }
+
       const user = await this.usersRepository.findOne({
-        where: { id: request.user.id, is_active: true },
+        where: { id: decoded.id, is_active: true },
       });
 
       if (!user) {
         throw new NotFoundException(validationMessageUser.NOT_CONTENT.USER);
       }
 
-      // Elimina la contraseña del objeto antes de retornarlo
-      const { email, password, is_active, is_staff, is_root, is_locked, recovery_code, lastPasswordChange, failed_attempts, code, ...userWithOutPassword } = user;
-
       // Actualizar el usuario con los datos proporcionados
       const response = await this.usersRepository.update(user.id, data);
 
       console.log(response);
 
-
       return {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.UPDATE,
         timestamp: new Date().toISOString(),
-        path: request.url,
-        data: userWithOutPassword.username,
+        path: this.request.url,
+        data: user.username,
       };
     } catch (error) {
       console.log(error);
 
-      if (
-        error instanceof NotFoundException
-      ) {
+      if (error instanceof NotFoundException) {
         throw error;
       }
 

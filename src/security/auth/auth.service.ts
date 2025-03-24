@@ -2,10 +2,10 @@ import {
   ConflictException,
   ForbiddenException,
   HttpStatus,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-  Req,
   UnauthorizedException,
   UnprocessableEntityException,
   UseFilters,
@@ -31,7 +31,9 @@ import { SendEmailDto } from '../email/dtos/send-email.dto';
 import { EmailService } from '../email/services/email/email.service';
 import { RecoveryCodeDto } from './dto/reset-code.dto';
 import { RestorePasswordDto } from './dto/restore-password.dto';
-import { FilterUserDto } from './dto/filter-user.dto';
+import { FilterUserDto, FilterUserVerifyDto } from './dto/filter-user.dto';
+import { REQUEST } from '@nestjs/core';
+import { RestoreGmailDto } from './dto/restore-gmail.dto';
 
 @Injectable()
 export class AuthService {
@@ -41,7 +43,9 @@ export class AuthService {
 
     private readonly usersService: UsersServices,
     private readonly jwtService: JwtService,
-    private emailService: EmailService,
+    private readonly emailService: EmailService,
+
+    @Inject(REQUEST) private readonly request: Request,
   ) { }
 
   async login({ email, password }: LoginDto): Promise<{
@@ -50,6 +54,12 @@ export class AuthService {
     try {
       // Busca al usuario incluyendo el campo de contraseña
       const user = await this.usersService.findOneByEmailWithPassword(email);
+
+      const userPasswords = await this.usersService.findAllPassword(user.id);
+
+      if (!userPasswords) {
+        throw new UnauthorizedException(validationMessageUser.NOT_CONTENT.USER_PASSWORD);
+      }
 
       if (!user) {
         throw new UnauthorizedException(validationMessageUser.NOT_CONTENT.USER);
@@ -67,13 +77,11 @@ export class AuthService {
 
       // Si el usuario está bloqueado
       if (user.is_locked) {
-        throw new UnauthorizedException(
-          'Su cuenta está bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione "desbloquear cuenta',
-        );
+        throw new UnauthorizedException(validationMessageUser.OK.BLOCKED_USER);
       }
 
       // Verificar la contraseña
-      const passwordMatches = await bcryptjs.compare(password, user.password);
+      const passwordMatches = await bcryptjs.compare(password, userPasswords.password);
 
       if (!passwordMatches) {
         // Incrementar el contador de intentos fallidos
@@ -84,16 +92,12 @@ export class AuthService {
           user.is_locked = true;
 
           await this.usersRepository.save(user); // Guarda el usuario actualizado
-          throw new UnauthorizedException(
-            'Su cuenta ha sido bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione "desbloquear cuenta"',
-          );
+          throw new UnauthorizedException(validationMessageUser.OK.BLOCKED_USER);
         }
-
-        console.log(user.failed_attempts);
 
         // Guardar el usuario con el contador de intentos fallidos actualizado
         await this.usersRepository.save(user);
-        throw new UnauthorizedException('Contraseña incorrecta');
+        throw new UnauthorizedException(`Contraseña incorrecta. Intento ${user.failed_attempts} de 3`);
       }
 
       // Si la contraseña es correcta, reiniciar el contador de intentos fallidos
@@ -103,7 +107,7 @@ export class AuthService {
       // Verifica si el grupo y los permisos están disponibles
       if (!user.group_description || !user.group_description.groupPermission) {
         throw new UnauthorizedException(
-          'No permissions associated with user group',
+          'No hay permisos asociados al grupo de usuarios',
         );
       }
 
@@ -113,7 +117,7 @@ export class AuthService {
 
       if (!groupPermission) {
         throw new UnauthorizedException(
-          'No permissions found for the user class',
+          'No se encontraron permisos para la clase de usuario',
         );
       }
 
@@ -164,9 +168,7 @@ export class AuthService {
       }
 
       // Si es otro error, lanza un InternalServerErrorException o similar
-      throw new InternalServerErrorException(
-        'An error occurred during login. Please try again later.',
-      );
+      throw new InternalServerErrorException(validationMessageServer.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -193,7 +195,6 @@ export class AuthService {
   @UseFilters(AllExceptionsFilter)
   async findOne(
     data: FilterUserDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
@@ -207,7 +208,12 @@ export class AuthService {
       }
 
       const userIsLocked = await this.usersRepository.findOne({
-        where: { ci: data.ci, email: data.email, birthdate: data.birthdate, is_locked: true },
+        where: {
+          ci: data.ci,
+          email: data.email,
+          birthdate: data.birthdate,
+          is_locked: true,
+        },
       });
 
       if (userIsLocked) {
@@ -219,11 +225,14 @@ export class AuthService {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.CONTENT,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: true,
       };
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
         throw error;
       }
 
@@ -235,7 +244,6 @@ export class AuthService {
 
   @UseFilters(AllExceptionsFilter)
   async unlockAccount(
-    @Req() request: Request,
     data: UnlockAccountDto,
   ): Promise<Users | AllResponseFilter> {
     try {
@@ -280,7 +288,7 @@ export class AuthService {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.UNLOCK,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: {
           username: user.username,
           email: user.email,
@@ -289,7 +297,10 @@ export class AuthService {
     } catch (error) {
       console.log(error);
 
-      if (error instanceof ConflictException || error instanceof NotFoundException) {
+      if (
+        error instanceof ConflictException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
 
@@ -299,7 +310,6 @@ export class AuthService {
 
   @UseFilters(AllExceptionsFilter)
   async resetCode(
-    @Req() request: Request,
     data: RecoveryCodeDto,
   ): Promise<Users | AllResponseFilter> {
     try {
@@ -352,7 +362,7 @@ export class AuthService {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.CODE,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: {
           username: user.username,
           email: user.email,
@@ -374,7 +384,6 @@ export class AuthService {
 
   @UseFilters(AllExceptionsFilter)
   async restorePassword(
-    @Req() request: Request,
     data: RestorePasswordDto,
   ): Promise<Users | AllResponseFilter> {
     try {
@@ -397,7 +406,9 @@ export class AuthService {
       }
 
       if (!user.recovery_code) {
-        throw new UnprocessableEntityException(validationMessageUser.NOT_OK.CODE);
+        throw new UnprocessableEntityException(
+          validationMessageUser.NOT_OK.CODE,
+        );
       }
 
       const codeMatches = await bcryptjs.compare(
@@ -406,7 +417,9 @@ export class AuthService {
       );
 
       if (!codeMatches) {
-        throw new UnprocessableEntityException(validationMessageUser.NOT_OK.CODE);
+        throw new UnprocessableEntityException(
+          validationMessageUser.NOT_OK.CODE,
+        );
       }
 
       const generatePassword = Math.random().toString(36).slice(-8);
@@ -433,7 +446,7 @@ export class AuthService {
       }
 
       user.recovery_code = null;
-      user.password = hashedPassword;
+      user.password_id.password = hashedPassword;
       user.lastPasswordChange = new Date();
 
       await this.usersRepository.save(user);
@@ -442,7 +455,7 @@ export class AuthService {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.RESTORE_PASSWORD,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: {
           username: user.username,
           email: user.email,
@@ -455,6 +468,100 @@ export class AuthService {
         error instanceof ConflictException ||
         error instanceof UnauthorizedException ||
         error instanceof UnprocessableEntityException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  @UseFilters(AllExceptionsFilter)
+  async findOneUser(
+    data: FilterUserVerifyDto,
+  ): Promise<Users | AllResponseFilter> {
+    try {
+      // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
+      const user = await this.usersRepository.findOne({
+        where: { ci: data.ci, birthdate: data.birthdate },
+      });
+
+      // En caso de no existir el usuario
+      if (!user) {
+        throw new NotFoundException(validationMessageUser.NOT_CONTENT.USER);
+      }
+
+      const userIsLocked = await this.usersRepository.findOne({
+        where: {
+          ci: data.ci,
+          birthdate: data.birthdate,
+          is_locked: true,
+        },
+      });
+
+      if (userIsLocked) {
+        throw new ForbiddenException(validationMessageUser.OK.BLOCKED);
+      }
+
+      // Devolver la respuesta en formato estandarizado
+      return {
+        statusCode: HttpStatus.OK,
+        message: validationMessageUser.OK.CONTENT,
+        timestamp: new Date().toISOString(),
+        path: this.request.url,
+        data: true,
+      };
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        validationMessageServer.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @UseFilters(AllExceptionsFilter)
+  async restoreGmail(
+    data: RestoreGmailDto,
+  ): Promise<Users | AllResponseFilter> {
+    try {
+      const user = await this.usersRepository.findOne({
+        where: {
+          ci: data.ci,
+        },
+      });
+
+      if (!user) {
+        throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
+      }
+
+      if (user.is_locked) {
+        throw new ConflictException(validationMessageUser.OK.BLOCKED);
+      }
+
+      user.email = data.email;
+
+      await this.usersRepository.save(user);
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: validationMessageUser.OK.RESTORE_GMAIL,
+        timestamp: new Date().toISOString(),
+        path: this.request.url,
+        data: {
+          username: user.username,
+        }, // Retornar el usuario actualizado
+      };
+    } catch (error) {
+      console.log(error);
+
+      if (
+        error instanceof ConflictException
       ) {
         throw error;
       }

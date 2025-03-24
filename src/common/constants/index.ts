@@ -10,7 +10,7 @@ export const validationMessageTypes = {
   IS_NOT_EMPTY: 'No puede estar vacion',
 
   // Errores de logitud
-  LENGTH_PASSWORD: 'la logitud debe ser de 8 a 20 dígitos',
+  LENGTH_PASSWORD: 'la logitud debe ser de 3 a 8 dígitos',
   LENGTH_NATIONALITY: 'la logitud debe ser de 1 dígitos y debe ser E o V',
   LENGTH_CI: 'la logitud debe ser de 8 dígitos',
   LENGTH_PHONE: 'la logitud debe ser de 11 dígitos',
@@ -34,10 +34,11 @@ export const validationMessageUser = {
     PASSWORD: 'Contraseña actualizada existosamente',
     RESTORE_PASSWORD:
       'Contraseña restaurada existosamente, su nueva contraseña se ha enviado a su correo',
+    RESTORE_GMAIL: 'Su correo a sido restaurado existosamente',
     UNLOCK: 'Cuenta desbloqueada existosamente',
     CODE: 'Código enviado al correo existosamente',
-    BLOCKED:
-      'Cuenta bloqueada, por favor seleccione la opción (Desbloquear Cuenta)',
+    BLOCKED: 'Cuenta bloqueada, por favor seleccione la opción (Desbloquear Cuenta) o comuníquese con el administrador',
+    BLOCKED_USER: 'Su cuenta está bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione (Desbloquear Cuenta) o comuníquese con el administrador',
   },
 
   NOT_OK: {
@@ -59,6 +60,7 @@ export const validationMessageUser = {
   NOT_CONTENT: {
     USER: 'La cuenta no existe',
     USERS: 'No hay usuarios',
+    USER_PASSWORD: 'Este usuario no tiene una contraseña activa',
     ACTIVE:
       'Este usuario no esta activado, por favor comuníquese con el administrador',
   },

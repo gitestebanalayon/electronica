@@ -7,10 +7,11 @@ import Users from './entities/users.entity';
 import Group from '../group/entities/group.entity';
 import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
+import Password from '../passwords/entities/password.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Users, Group]),
+    TypeOrmModule.forFeature([Users, Group, Password]),
     EmailModule,
     forwardRef(() => AuthModule),
   ],
@@ -18,4 +19,4 @@ import { EmailModule } from '../email/email.module';
   providers: [UsersServices],
   exports: [UsersServices, TypeOrmModule],
 })
-export class UsersModule {}
+export class UsersModule { }

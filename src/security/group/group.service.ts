@@ -2,10 +2,10 @@ import {
   BadRequestException,
   ConflictException,
   HttpStatus,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-  Req,
   UseFilters,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -24,6 +24,7 @@ import {
 } from '../../core/errors/all-exceptions.filter';
 import GroupPermission from '../../database/entitysExternals/groupPermission.entity';
 import { Request } from 'express';
+import { REQUEST } from '@nestjs/core';
 
 @Injectable()
 export class GroupService {
@@ -32,15 +33,14 @@ export class GroupService {
     private readonly groupRepository: Repository<Group>,
     @InjectRepository(GroupPermission)
     private readonly groupPermissionRepository: Repository<GroupPermission>,
+
+    @Inject(REQUEST) private readonly request: Request,
   ) {}
 
   //--------------------------
 
   @UseFilters(AllExceptionsFilter)
-  async create(
-    data: CreateGroupDto,
-    @Req() request: Request,
-  ): Promise<Group | AllResponseFilter> {
+  async create(data: CreateGroupDto): Promise<Group | AllResponseFilter> {
     const queryRunner =
       this.groupRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
@@ -93,7 +93,7 @@ export class GroupService {
         statusCode: HttpStatus.CREATED,
         message: validationMessageGroup.OK.CREATED,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: newGroup,
       };
     } catch (error) {
@@ -149,10 +149,7 @@ export class GroupService {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async findOne(
-    id: number,
-    @Req() request: Request,
-  ): Promise<Group | AllResponseFilter> {
+  async findOne(id: number): Promise<Group | AllResponseFilter> {
     const group = await this.groupRepository.findOne({ where: { id } });
 
     if (!group) {
@@ -163,7 +160,7 @@ export class GroupService {
       statusCode: HttpStatus.OK,
       message: validationMessageGroup.OK.CONTENT,
       timestamp: new Date().toISOString(),
-      path: request.url,
+      path: this.request.url,
       data: group,
     };
   }
@@ -172,7 +169,6 @@ export class GroupService {
   async update(
     id: number,
     data: UpdateGroupDto,
-    @Req() request: Request,
   ): Promise<Group | AllResponseFilter> {
     const queryRunner =
       this.groupRepository.manager.connection.createQueryRunner();
@@ -263,7 +259,7 @@ export class GroupService {
           statusCode: HttpStatus.OK,
           message: validationMessageGroup.OK.UPDATE,
           timestamp: new Date().toISOString(),
-          path: request.url,
+          path: this.request.url,
           data: group,
         };
       }
@@ -274,7 +270,7 @@ export class GroupService {
         statusCode: HttpStatus.NOT_MODIFIED,
         message: validationMessageGroup.NOT_OK.UPDATE,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: null,
       };
     } catch (error) {
@@ -294,10 +290,7 @@ export class GroupService {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async delete(
-    id: number,
-    @Req() request: Request,
-  ): Promise<Group | AllResponseFilter> {
+  async delete(id: number): Promise<Group | AllResponseFilter> {
     const existingGroup = await this.groupRepository.findOneBy({ id });
 
     if (!existingGroup) {
@@ -321,7 +314,7 @@ export class GroupService {
         statusCode: HttpStatus.OK,
         message: validationMessageGroup.OK.DELETE,
         timestamp: new Date().toISOString(),
-        path: request.url,
+        path: this.request.url,
         data: profile,
       };
     }
@@ -330,7 +323,7 @@ export class GroupService {
       statusCode: HttpStatus.NOT_MODIFIED,
       message: validationMessageGroup.NOT_OK.DELETE,
       timestamp: new Date().toISOString(),
-      path: request.url,
+      path: this.request.url,
       data: [],
     };
   }
