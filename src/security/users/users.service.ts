@@ -65,7 +65,7 @@ export class UsersServices {
     private emailService: EmailService,
 
     @Inject(REQUEST) private readonly request: Request,
-  ) {}
+  ) { }
 
   @UseFilters(AllExceptionsFilter)
   async create(data: CreateUserDto): Promise<AllResponseFilter> {
@@ -219,16 +219,14 @@ export class UsersServices {
       order: { id: 'ASC' }, // Orden de id
     });
 
-    console.log(data);
-
-    // Mapeo para incluir el nombre y el ID de group_description y state, omitiendo la contraseña
+    // Mapeo para incluir el nombre y el ID de group_description y state.
     const mappedData = data.map((user) => ({
       ...user,
       group_description: user.group_description
         ? {
-            id: user.group_description.id,
-            name: user.group_description.description, // "description"
-          }
+          id: user.group_description.id,
+          name: user.group_description.description, // "description"
+        }
         : undefined, // Solo incluir el nombre y el ID de group_description si existe
     })) as (Users & {
       group_description: { id: number; name: string } | undefined;
@@ -561,6 +559,11 @@ export class UsersServices {
   async changePassword(
     data: UpdatePasswordUserDto,
   ): Promise<Users | AllResponseFilter> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       // Obtener el encabezado Authorization
       const authHeader = this.request.headers['authorization'];
@@ -584,33 +587,63 @@ export class UsersServices {
         throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
       }
 
+
+      const currentPassword = await this.passwordRepository.findOne({
+        where: {
+          users: {
+            id: user.id,
+          },
+          status: true,
+        },
+      })
+
       // Validar la contraseña actual proporcionada
       const isPasswordValid = await bcryptjs.compare(
         data.currentPassword,
-        user.password_id.password,
+        currentPassword.password,
       );
 
       if (!isPasswordValid) {
         throw new ConflictException(validationMessageUser.CONFLICT.PASSWORD);
       }
 
-      // Verificar que la nueva contraseña no sea igual a la anterior
-      const isNewPasswordSameAsOld = await bcryptjs.compare(
-        data.password,
-        user.password_id.password,
-      );
+      // Validar si la contraseña no es igual a las anteriores
+      const findAllPassword = await this.passwordRepository.find({
+        where: {
+          users: {
+            id: user.id,
+          },
+        },
+      })
 
-      if (isNewPasswordSameAsOld) {
-        throw new ConflictException(
-          validationMessageUser.CONFLICT.SAME_PASSWORD,
-        );
-      }
+      findAllPassword.forEach((password) => {
+        const comparePasswords = bcryptjs.compareSync(data.password, password.password);
+        if (comparePasswords) {
+          throw new ConflictException(validationMessageUser.CONFLICT.SAME_PASSWORD);
+        }
+      })
 
+      // Generar la nueva contraseña hasheada
       const hashedPassword = await bcryptjs.hash(data.password, 10);
-      // Actualizar la contraseña en el usuario
-      user.password_id.password = hashedPassword;
+
+      // Desactivar la contraseña actual
+      currentPassword.status = false;
+      await queryRunner.manager.save(currentPassword);
+
       user.lastPasswordChange = new Date();
-      const updatedUser = await this.usersRepository.save(user);
+      await queryRunner.manager.save(user);
+
+
+      // Crear y guardar la nueva contraseña
+      const newPassword = new Password();
+      newPassword.password = hashedPassword; // Guardar la contraseña hasheada
+      newPassword.users = user; // Asignar el usuario
+      newPassword.status = true; // Establecer la contraseña como principal
+
+      const updatedUser = await queryRunner.manager.save(newPassword);
+
+      // Confirmar la transacción
+      await queryRunner.commitTransaction();
 
       return {
         statusCode: HttpStatus.OK,
@@ -618,9 +651,9 @@ export class UsersServices {
         timestamp: new Date().toISOString(),
         path: this.request.url,
         data: {
-          id: updatedUser.id,
-          username: updatedUser.username,
-          email: updatedUser.email,
+          id: updatedUser.users.id,
+          username: updatedUser.users.username,
+          email: updatedUser.users.email,
         }, // Retornar el usuario actualizado
       };
     } catch (error) {

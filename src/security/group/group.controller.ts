@@ -19,13 +19,15 @@ import { AllResponseFilter } from '../../core/errors/all-exceptions.filter';
 import { JwtAuthGuard } from '../auth/guard/auth.guard';
 import { AuthWithProfiles } from '../auth/decorators/auth.decorator';
 import { Profilee } from '../../common/enums/profile.enum.ts';
+import { Maintenance } from '../auth/guard/maintenance.guard';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@UseGuards(Maintenance)
 @ApiTags('Group')
 @Controller('group')
 export class GroupController {
-  constructor(private readonly groupService: GroupService) {}
+  constructor(private readonly groupService: GroupService) { }
 
   @Post('create')
   @AuthWithProfiles([Profilee.ADMIN], { create: true })

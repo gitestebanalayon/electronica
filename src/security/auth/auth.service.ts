@@ -20,7 +20,7 @@ import {
   validationMessageUser,
 } from 'src/common/constants';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import {
   AllExceptionsFilter,
   AllResponseFilter,
@@ -34,6 +34,7 @@ import { RestorePasswordDto } from './dto/restore-password.dto';
 import { FilterUserDto, FilterUserVerifyDto } from './dto/filter-user.dto';
 import { REQUEST } from '@nestjs/core';
 import { RestoreGmailDto } from './dto/restore-gmail.dto';
+import Password from '../passwords/entities/password.entity';
 
 @Injectable()
 export class AuthService {
@@ -41,12 +42,17 @@ export class AuthService {
     @InjectRepository(Users)
     private readonly usersRepository: Repository<Users>,
 
+    @InjectRepository(Password)
+    private readonly passwordRepository: Repository<Password>,
+
     private readonly usersService: UsersServices,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
 
+    private readonly dataSource: DataSource,
+
     @Inject(REQUEST) private readonly request: Request,
-  ) {}
+  ) { }
 
   async login({ email, password }: LoginDto): Promise<{
     token: string;
@@ -183,11 +189,11 @@ export class AuthService {
     }
   }
 
-  private async findUserByCredentials(data: LoginDto): Promise<Users | null> {
-    // Busca el usuario en la base de datos por correo electrónico
-    const user = await this.usersService.findOneByEmail(data.email);
-    return user;
-  }
+  // private async findUserByCredentials(data: LoginDto): Promise<Users | null> {
+  //   // Busca el usuario en la base de datos por correo electrónico
+  //   const user = await this.usersService.findOneByEmail(data.email);
+  //   return user;
+  // }
 
   // Método para decodificar el token
   decodeToken(token: string): Promise<{
@@ -393,6 +399,11 @@ export class AuthService {
   async restorePassword(
     data: RestorePasswordDto,
   ): Promise<Users | AllResponseFilter> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       const user = await this.usersRepository.findOne({
         where: {
@@ -452,11 +463,32 @@ export class AuthService {
         );
       }
 
-      user.recovery_code = null;
-      user.password_id.password = hashedPassword;
-      user.lastPasswordChange = new Date();
+      const currentPassword = await this.passwordRepository.findOne({
+        where: {
+          users: {
+            id: user.id,
+          },
+          status: true,
+        },
+      })
 
-      await this.usersRepository.save(user);
+      // Desactivar la contraseña actual
+      currentPassword.status = false;
+      await queryRunner.manager.save(currentPassword);
+
+      // Nueva fecha de cambio de contraseña y eliminar el código de recuperación
+      user.lastPasswordChange = new Date();
+      user.recovery_code = null;
+      await queryRunner.manager.save(user);
+
+      // Crear la nueva contraseña
+      const newPassword = new Password();
+      newPassword.password = hashedPassword;
+      newPassword.users = user;
+      newPassword.status = true;
+      const updatedUser = await queryRunner.manager.save(newPassword);
+
+      await queryRunner.commitTransaction();
 
       return {
         statusCode: HttpStatus.OK,
@@ -464,8 +496,8 @@ export class AuthService {
         timestamp: new Date().toISOString(),
         path: this.request.url,
         data: {
-          username: user.username,
-          email: user.email,
+          username: updatedUser.users.username,
+          email: updatedUser.users.email,
         }, // Retornar el usuario actualizado
       };
     } catch (error) {
