@@ -21,13 +21,15 @@ import { Profilee } from '../../common/enums/profile.enum.ts';
 import Users from './entities/users.entity';
 import { UpdatePasswordUserDto } from './dto/update-password-users.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { Maintenance } from '../auth/guard/maintenance.guard';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@UseGuards(Maintenance)
 @ApiTags('Account')
 @Controller('account')
 export class UsuariosController {
-  constructor(private readonly usersServices: UsersServices) {}
+  constructor(private readonly usersServices: UsersServices) { }
 
   @Post('create')
   @AuthWithProfiles([Profilee.ADMIN], { create: true })
@@ -104,6 +106,7 @@ export class UsuariosController {
   //   description: 'No es necesario enviar el id',
   //   type: Number,
   // })
+
 
   @Put('update/profile')
   @AuthWithProfiles([Profilee.ADMIN, Profilee.DIRECTOR, Profilee.USER], {

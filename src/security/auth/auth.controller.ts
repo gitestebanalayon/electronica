@@ -23,6 +23,7 @@ import { RecoveryCodeDto } from './dto/reset-code.dto';
 import { RestorePasswordDto } from './dto/restore-password.dto';
 import { FilterUserDto, FilterUserVerifyDto } from './dto/filter-user.dto';
 import { RestoreGmailDto } from './dto/restore-gmail.dto';
+import { Maintenance } from './guard/maintenance.guard';
 
 export interface AuthenticatedUser {
   token: string;
@@ -30,8 +31,9 @@ export interface AuthenticatedUser {
 
 @ApiTags('Auth')
 @Controller('auth')
+@UseGuards(Maintenance)
 export class AuthController {
-  constructor(private readonly authServices: AuthService) {}
+  constructor(private readonly authServices: AuthService) { }
 
   @HttpCode(HttpStatus.OK)
   @Post('login')

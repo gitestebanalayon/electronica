@@ -3,8 +3,9 @@ import {
   CanActivate,
   ExecutionContext,
   UnauthorizedException,
+  InternalServerErrorException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { Request } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -17,7 +18,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     @InjectRepository(Users)
     private readonly usersRepository: Repository<Users>,
-  ) {}
+  ) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -45,14 +46,28 @@ export class JwtAuthGuard implements CanActivate {
         payload.iat * 1000 < user.lastPasswordChange.getTime()
       ) {
         throw new UnauthorizedException(
-          'Token no válido debido a cambio de contraseña',
+          'Tu sesión ha expirado debido al cambio de contraseña. Por favor, inicia sesión nuevamente.',
         );
       }
 
       // Agregar los datos del usuario al request
       request.user = payload;
     } catch (error) {
-      throw new UnauthorizedException('Token invalido', error.message);
+      console.log(error);
+
+      // Manejar el error de token expirado
+      if (error instanceof TokenExpiredError) {
+        throw new UnauthorizedException('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
+      }
+
+
+      if (
+        error instanceof UnauthorizedException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(error);
     }
 
     return true;

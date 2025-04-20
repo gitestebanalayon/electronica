@@ -7,13 +7,15 @@ import { Profilee } from '../../common/enums/profile.enum.ts';
 import { CreatePasswordDto } from './dto/create-password.dto';
 import Password from './entities/password.entity';
 import { AllResponseFilter } from 'src/core/errors/all-exceptions.filter';
+import { Maintenance } from '../auth/guard/maintenance.guard';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@UseGuards(Maintenance)
 @ApiTags('Password')
 @Controller('password')
 export class PasswordController {
-  constructor(private readonly passwordService: PasswordService) {}
+  constructor(private readonly passwordService: PasswordService) { }
 
   @Post('create')
   @AuthWithProfiles([Profilee.ADMIN], { create: true })
