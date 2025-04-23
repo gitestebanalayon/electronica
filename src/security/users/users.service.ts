@@ -46,6 +46,7 @@ import { omit } from 'lodash';
 import { REQUEST } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
+import Password from '../passwords/entities/password.entity';
 
 @Injectable()
 export class UsersServices {
@@ -61,10 +62,15 @@ export class UsersServices {
     private emailService: EmailService,
 
     @Inject(REQUEST) private readonly request: Request,
-  ) {}
+  ) { }
 
   @UseFilters(AllExceptionsFilter)
   async create(data: CreateUserDto): Promise<AllResponseFilter> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       // Verificar si ya existe un usuario activo con el mismo email
       const existingUserByEmail = await this.usersRepository.findOne({
@@ -74,7 +80,7 @@ export class UsersServices {
         throw new ConflictException(validationMessageUser.CONFLICT.EMAIL);
       }
 
-      // Verificar si ya existe un usuario activo con el mismo usuario
+      // Verificar si ya existe un usuario activo con el mismo username
       const existingUserByUsername = await this.usersRepository.findOne({
         where: { username: data.username, is_active: true },
       });
@@ -90,7 +96,7 @@ export class UsersServices {
         throw new ConflictException(validationMessageUser.CONFLICT.CI);
       }
 
-      // Verificar si el group existe
+      // Verificar si el grupo existe
       const group = await this.groupRepository.findOne({
         where: { id: data.group_description_id, is_deleted: false },
       });
@@ -98,30 +104,11 @@ export class UsersServices {
         throw new ConflictException(validationMessageGroup.NOT_CONTENT.GROUP);
       }
 
+      // Generar contraseña aleatoria
       const generatedPassword = Math.random().toString(36).slice(-8);
       const hashedPassword = await bcryptjs.hash(generatedPassword, 10);
 
-      // Preparar los datos del correo
-      const sendEmailDto: SendEmailDto = {
-        from: 'serviciosesteban953@gmail.com',
-        subjectEmail: 'Bienvenido',
-        sendTo: data.email,
-        template: 'welcome',
-        params: { password: generatedPassword, username: data.username },
-      };
-
-      // Intentar enviar el correo
-      try {
-        await this.emailService.sendEmail(sendEmailDto);
-      } catch (emailError) {
-        // Lanzar excepción si falla el envío del correo
-        throw new InternalServerErrorException(
-          `Error al enviar el correo a ${data.email}: ${emailError.message}`,
-          emailError.stack,
-        );
-      }
-
-      // Crear y guardar el usuario solo si el correo se envió con éxito
+      // Crear el usuario
       const user = new Users();
       user.code = data.origen + data.ci;
       user.username = data.username;
@@ -130,13 +117,42 @@ export class UsersServices {
       user.ci = data.ci;
       user.first_name = data.first_name;
       user.last_name = data.last_name;
-      user.password = hashedPassword;
       user.phone = data.phone;
       user.failed_attempts = data.failed_attempts;
       user.birthdate = data.birthdate;
       user.group_description = group;
+      // user.password = hashedPassword; // Guardar la contraseña hasheada en el usuario
 
-      const savedUser = await this.usersRepository.save(user);
+      // Guardar el usuario
+      const savedUser = await queryRunner.manager.save(user);
+
+      // Crear y guardar la contraseña en la tabla password
+      const password = new Password();
+      password.password = hashedPassword; // Guardar la contraseña hasheada
+      password.users = savedUser; // Asignar el usuario
+
+      await queryRunner.manager.save(password);
+
+      // Enviar correo con la contraseña generada
+      const sendEmailDto: SendEmailDto = {
+        from: 'serviciosesteban953@gmail.com',
+        subjectEmail: 'Bienvenido',
+        sendTo: data.email,
+        template: 'welcome',
+        params: { password: generatedPassword, username: data.username },
+      };
+
+      try {
+        await this.emailService.sendEmail(sendEmailDto);
+      } catch (emailError) {
+        throw new InternalServerErrorException(
+          `Error al enviar el correo a ${data.email}: ${emailError.message}`,
+          emailError.stack,
+        );
+      }
+
+      // Confirmar la transacción
+      await queryRunner.commitTransaction();
 
       return {
         statusCode: HttpStatus.CREATED,
@@ -146,6 +162,9 @@ export class UsersServices {
         data: savedUser,
       };
     } catch (error) {
+      // Revertir la transacción en caso de error
+      await queryRunner.rollbackTransaction();
+
       if (
         error instanceof BadRequestException ||
         error instanceof ConflictException ||
@@ -157,6 +176,9 @@ export class UsersServices {
       throw new InternalServerErrorException(
         validationMessageServer.INTERNAL_SERVER_ERROR,
       );
+    } finally {
+      // Liberar el QueryRunner
+      await queryRunner.release();
     }
   }
 
@@ -196,12 +218,11 @@ export class UsersServices {
     // Mapeo para incluir el nombre y el ID de group_description y state, omitiendo la contraseña
     const mappedData = data.map((user) => ({
       ...user,
-      password: undefined,
       group_description: user.group_description
         ? {
-            id: user.group_description.id,
-            name: user.group_description.description, // "description"
-          }
+          id: user.group_description.id,
+          name: user.group_description.description, // "description"
+        }
         : undefined, // Solo incluir el nombre y el ID de group_description si existe
     })) as (Users & {
       group_description: { id: number; name: string } | undefined;
@@ -548,11 +569,11 @@ export class UsersServices {
       // Validar la contraseña actual proporcionada
       const isPasswordValid = await bcryptjs.compare(
         data.currentPassword,
-        user.password,
+        user.password_id.password,
       );
 
       if (!isPasswordValid) {
-        throw new UnauthorizedException(
+        throw new ConflictException(
           validationMessageUser.CONFLICT.PASSWORD,
         );
       }
@@ -560,7 +581,7 @@ export class UsersServices {
       // Verificar que la nueva contraseña no sea igual a la anterior
       const isNewPasswordSameAsOld = await bcryptjs.compare(
         data.password,
-        user.password,
+        user.password_id.password,
       );
 
       if (isNewPasswordSameAsOld) {
@@ -571,7 +592,7 @@ export class UsersServices {
 
       const hashedPassword = await bcryptjs.hash(data.password, 10);
       // Actualizar la contraseña en el usuario
-      user.password = hashedPassword;
+      user.password_id.password = hashedPassword;
       user.lastPasswordChange = new Date();
       const updatedUser = await this.usersRepository.save(user);
 

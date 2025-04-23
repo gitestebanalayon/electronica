@@ -9,7 +9,7 @@ export class LoginDto {
 
   @ApiProperty({ example: '12345678' })
   @IsString()
-  @MinLength(6)
+  @MinLength(3)
   @Transform(({ value }) => value.trim())
   password: string;
 }

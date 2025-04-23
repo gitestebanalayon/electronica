@@ -15,6 +15,7 @@ import { AppService } from './app.service';
 
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './core/errors/all-exceptions.filter';
+import { PasswordModule } from './security/passwords/password.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { AllExceptionsFilter } from './core/errors/all-exceptions.filter';
     DatabaseModule,
     UsersModule,
     GroupModule,
+    PasswordModule,
     AuthModule,
   ],
   controllers: [AppController],
@@ -38,4 +40,4 @@ import { AllExceptionsFilter } from './core/errors/all-exceptions.filter';
     AppService,
   ],
 })
-export class AppModule {}
+export class AppModule { }

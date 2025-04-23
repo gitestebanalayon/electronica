@@ -17,3 +17,14 @@ export class FilterUserDto {
   @IsNotEmpty({ message: 'no puede estar vacio' })
   birthdate: Date;
 }
+
+export class FilterUserVerifyDto {
+  @ApiProperty({ example: 27498161 })
+  @IsNotEmpty({ message: 'no puede estar vacio' })
+  ci: number;
+
+  @ApiProperty({ description: 'Fecha de nacimiento', example: '2000-08-25' })
+  @IsDateString({}, { message: validationMessageTypes.IS_DATE })
+  @IsNotEmpty({ message: 'no puede estar vacio' })
+  birthdate: Date;
+}

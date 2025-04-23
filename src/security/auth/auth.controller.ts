@@ -21,7 +21,8 @@ import { Request } from 'express';
 import { UnlockAccountDto } from './dto/unlock-account.dto';
 import { RecoveryCodeDto } from './dto/reset-code.dto';
 import { RestorePasswordDto } from './dto/restore-password.dto';
-import { FilterUserDto } from './dto/filter-user.dto';
+import { FilterUserDto, FilterUserVerifyDto } from './dto/filter-user.dto';
+import { RestoreGmailDto } from './dto/restore-gmail.dto';
 
 export interface AuthenticatedUser {
   token: string;
@@ -30,7 +31,7 @@ export interface AuthenticatedUser {
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authServices: AuthService) {}
+  constructor(private readonly authServices: AuthService) { }
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
@@ -66,35 +67,46 @@ export class AuthController {
   @Get('filter')
   async findOne(
     @Query() data: FilterUserDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
-    return await this.authServices.findOne(data, request);
+    return await this.authServices.findOne(data);
+  }
+
+  @Get('account/filter')
+  async findOneUser(
+    @Query() data: FilterUserVerifyDto,
+  ): Promise<Users | AllResponseFilter> {
+    return await this.authServices.findOneUser(data);
   }
 
   @HttpCode(HttpStatus.OK)
   @Put('account/unlock')
   async unlockAccount(
     @Body() data: UnlockAccountDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
-    return await this.authServices.unlockAccount(request, data);
+    return await this.authServices.unlockAccount(data);
   }
 
   @HttpCode(HttpStatus.OK)
   @Put('account/code')
   async resetCode(
     @Body() data: RecoveryCodeDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
-    return await this.authServices.resetCode(request, data);
+    return await this.authServices.resetCode(data);
   }
 
   @HttpCode(HttpStatus.OK)
   @Put('account/restore-password')
   async restorePassword(
     @Body() data: RestorePasswordDto,
-    @Req() request: Request,
   ): Promise<Users | AllResponseFilter> {
-    return await this.authServices.restorePassword(request, data);
+    return await this.authServices.restorePassword(data);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Put('account/restore-gmail')
+  async restoreGmail(
+    @Body() data: RestoreGmailDto,
+  ): Promise<Users | AllResponseFilter> {
+    return await this.authServices.restoreGmail(data);
   }
 }

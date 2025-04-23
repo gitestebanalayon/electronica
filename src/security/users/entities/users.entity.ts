@@ -3,11 +3,13 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
 import { Exclude } from 'class-transformer';
 import Group from '../../group/entities/group.entity';
+import Password from 'src/security/passwords/entities/password.entity';
 
 @Entity('user', { schema: 'security' })
 export default class Users {
@@ -35,9 +37,14 @@ export default class Users {
   @Column('varchar', { name: 'last_name', length: 100 })
   last_name: string;
 
-  @Column('varchar', { name: 'password' })
-  @Exclude()
-  password: string;
+  // @Column('varchar', { name: 'password' })
+  // @Exclude()
+  // password: string;
+
+  @OneToMany(() => Password, (password) => password.users, {
+    nullable: true,
+  })
+  password_id: Password;
 
   @Column({ type: 'timestamp', nullable: true })
   lastPasswordChange: Date;
