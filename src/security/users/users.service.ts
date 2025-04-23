@@ -111,7 +111,33 @@ export class UsersServices {
       const generatedPassword = Math.random().toString(36).slice(-8);
       const hashedPassword = await bcryptjs.hash(generatedPassword, 10);
 
-      // Preparar los datos del correo
+      // Crear el usuario
+      const user = new Users();
+      user.code = data.origen + data.ci;
+      user.username = data.username;
+      user.email = data.email;
+      user.origen = data.origen;
+      user.ci = data.ci;
+      user.first_name = data.first_name;
+      user.last_name = data.last_name;
+      user.phone = data.phone;
+      user.failed_attempts = data.failed_attempts;
+      user.birthdate = data.birthdate;
+      user.group_description = group;
+      // user.password = hashedPassword; // Guardar la contraseña hasheada en el usuario
+
+      // Guardar el usuario
+      const savedUser = await queryRunner.manager.save(user);
+
+      // Crear y guardar la contraseña en la tabla password
+      const password = new Password();
+      password.password = hashedPassword; // Guardar la contraseña hasheada
+      password.users = savedUser; // Asignar el usuario
+      password.status = true; // Establecer la contraseña como principal
+
+      await queryRunner.manager.save(password);
+
+      // Enviar correo con la contraseña generada
       const sendEmailDto: SendEmailDto = {
         from: 'serviciosesteban953@gmail.com',
         subjectEmail: 'Bienvenido',
@@ -123,7 +149,8 @@ export class UsersServices {
       try {
         await this.emailService.sendEmail(sendEmailDto);
       } catch (emailError) {
-        // Lanzar excepción si falla el envío del correo
+        console.log(emailError);
+
         throw new InternalServerErrorException(
           `Error al enviar el correo a ${data.email}: ${emailError.message}`,
           emailError.stack,
@@ -573,30 +600,36 @@ export class UsersServices {
       // Validar la contraseña actual proporcionada
       const isPasswordValid = await bcryptjs.compare(
         data.currentPassword,
-        user.password,
+        currentPassword.password,
       );
 
       if (!isPasswordValid) {
-        throw new UnauthorizedException(
-          validationMessageUser.CONFLICT.PASSWORD,
-        );
+        throw new ConflictException(validationMessageUser.CONFLICT.PASSWORD);
       }
 
-      // Verificar que la nueva contraseña no sea igual a la anterior
-      const isNewPasswordSameAsOld = await bcryptjs.compare(
-        data.password,
-        user.password,
-      );
+      // Validar si la contraseña no es igual a las anteriores
+      const findAllPassword = await this.passwordRepository.find({
+        where: {
+          users: {
+            id: user.id,
+          },
+        },
+      })
 
-      if (isNewPasswordSameAsOld) {
-        throw new ConflictException(
-          validationMessageUser.CONFLICT.SAME_PASSWORD,
-        );
-      }
+      findAllPassword.forEach((password) => {
+        const comparePasswords = bcryptjs.compareSync(data.password, password.password);
+        if (comparePasswords) {
+          throw new ConflictException(validationMessageUser.CONFLICT.SAME_PASSWORD);
+        }
+      })
 
+      // Generar la nueva contraseña hasheada
       const hashedPassword = await bcryptjs.hash(data.password, 10);
-      // Actualizar la contraseña en el usuario
-      user.password = hashedPassword;
+
+      // Desactivar la contraseña actual
+      currentPassword.status = false;
+      await queryRunner.manager.save(currentPassword);
+
       user.lastPasswordChange = new Date();
       await queryRunner.manager.save(user);
 
