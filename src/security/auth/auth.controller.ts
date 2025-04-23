@@ -30,7 +30,9 @@ export interface AuthenticatedUser {
 
 @ApiTags('Auth')
 @Controller('auth')
+@UseGuards(Maintenance)
 export class AuthController {
+  constructor(private readonly authServices: AuthService) { }
   constructor(private readonly authServices: AuthService) { }
 
   @HttpCode(HttpStatus.OK)
@@ -75,6 +77,14 @@ export class AuthController {
   async findOneUser(
     @Query() data: FilterUserVerifyDto,
   ): Promise<Users | AllResponseFilter> {
+    return await this.authServices.findOne(data);
+  }
+
+  @Get('account/filter')
+  async findOneUser(
+    @Query() data: FilterUserVerifyDto,
+  ): Promise<Users | AllResponseFilter> {
+    return await this.authServices.findOneUser(data);
     return await this.authServices.findOneUser(data);
   }
 
@@ -84,6 +94,7 @@ export class AuthController {
     @Body() data: UnlockAccountDto,
   ): Promise<Users | AllResponseFilter> {
     return await this.authServices.unlockAccount(data);
+    return await this.authServices.unlockAccount(data);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -91,6 +102,7 @@ export class AuthController {
   async resetCode(
     @Body() data: RecoveryCodeDto,
   ): Promise<Users | AllResponseFilter> {
+    return await this.authServices.resetCode(data);
     return await this.authServices.resetCode(data);
   }
 
@@ -107,6 +119,15 @@ export class AuthController {
   async restoreGmail(
     @Body() data: RestoreGmailDto,
   ): Promise<Users | AllResponseFilter> {
+    return await this.authServices.restorePassword(data);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Put('account/restore-gmail')
+  async restoreGmail(
+    @Body() data: RestoreGmailDto,
+  ): Promise<Users | AllResponseFilter> {
+    return await this.authServices.restoreGmail(data);
     return await this.authServices.restoreGmail(data);
   }
 }

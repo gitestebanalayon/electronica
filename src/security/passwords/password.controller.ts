@@ -1,27 +1,17 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Put,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PasswordService } from './password.service';
-import { FilterPasswordDto, ResponsePasswordTableDto } from './dto/filter-password.dto';
-import { AllResponseFilter } from '../../core/errors/all-exceptions.filter';
 import { JwtAuthGuard } from '../auth/guard/auth.guard';
 import { AuthWithProfiles } from '../auth/decorators/auth.decorator';
 import { Profilee } from '../../common/enums/profile.enum.ts';
 import { CreatePasswordDto } from './dto/create-password.dto';
 import Password from './entities/password.entity';
-import { UpdatePasswordDto } from './dto/update-password.dto';
+import { AllResponseFilter } from 'src/core/errors/all-exceptions.filter';
+import { Maintenance } from '../auth/guard/maintenance.guard';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@UseGuards(Maintenance)
 @ApiTags('Password')
 @Controller('password')
 export class PasswordController {
@@ -29,8 +19,10 @@ export class PasswordController {
 
   @Post('create')
   @AuthWithProfiles([Profilee.ADMIN], { create: true })
-  create(@Body() data: CreatePasswordDto) {
-    return this.passwordService.create(data);
+  async create(
+    @Body() data: CreatePasswordDto,
+  ): Promise<Password | AllResponseFilter> {
+    return await this.passwordService.create(data);
   }
 
   // @Get('read')

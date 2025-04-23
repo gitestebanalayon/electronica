@@ -7,7 +7,6 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import { Exclude } from 'class-transformer';
 import Group from '../../group/entities/group.entity';
 import Password from 'src/security/passwords/entities/password.entity';
 

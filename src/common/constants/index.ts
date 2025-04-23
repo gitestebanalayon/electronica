@@ -38,7 +38,9 @@ export const validationMessageUser = {
     UNLOCK: 'Cuenta desbloqueada existosamente',
     CODE: 'Código enviado al correo existosamente',
     BLOCKED:
-      'Cuenta bloqueada, por favor seleccione la opción (Desbloquear Cuenta)',
+      'Cuenta bloqueada, por favor seleccione la opción (Desbloquear Cuenta) o comuníquese con el administrador',
+    BLOCKED_USER:
+      'Su cuenta está bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione (Desbloquear Cuenta) o comuníquese con el administrador',
   },
 
   NOT_OK: {
@@ -54,12 +56,13 @@ export const validationMessageUser = {
     EMAIL: 'El correo ya existe',
     CI: 'La cédula ya existe',
     PASSWORD: 'Contraseña actual incorrecta',
-    SAME_PASSWORD: 'La contraseña no puede ser igual a la anterior',
+    SAME_PASSWORD: 'Esta contraseña ya ha sido utilizada anteriormente, por favor proporcione una nueva',
   },
 
   NOT_CONTENT: {
     USER: 'La cuenta no existe',
     USERS: 'No hay usuarios',
+    USER_PASSWORD: 'Este usuario no tiene una contraseña activa',
     ACTIVE:
       'Este usuario no esta activado, por favor comuníquese con el administrador',
   },

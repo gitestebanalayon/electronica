@@ -57,6 +57,9 @@ export class UsersServices {
     @InjectRepository(Group)
     private readonly groupRepository: Repository<Group>,
 
+    @InjectRepository(Password)
+    private readonly passwordRepository: Repository<Password>,
+
     private readonly dataSource: DataSource,
 
     private emailService: EmailService,
@@ -108,32 +111,7 @@ export class UsersServices {
       const generatedPassword = Math.random().toString(36).slice(-8);
       const hashedPassword = await bcryptjs.hash(generatedPassword, 10);
 
-      // Crear el usuario
-      const user = new Users();
-      user.code = data.origen + data.ci;
-      user.username = data.username;
-      user.email = data.email;
-      user.origen = data.origen;
-      user.ci = data.ci;
-      user.first_name = data.first_name;
-      user.last_name = data.last_name;
-      user.phone = data.phone;
-      user.failed_attempts = data.failed_attempts;
-      user.birthdate = data.birthdate;
-      user.group_description = group;
-      // user.password = hashedPassword; // Guardar la contraseña hasheada en el usuario
-
-      // Guardar el usuario
-      const savedUser = await queryRunner.manager.save(user);
-
-      // Crear y guardar la contraseña en la tabla password
-      const password = new Password();
-      password.password = hashedPassword; // Guardar la contraseña hasheada
-      password.users = savedUser; // Asignar el usuario
-
-      await queryRunner.manager.save(password);
-
-      // Enviar correo con la contraseña generada
+      // Preparar los datos del correo
       const sendEmailDto: SendEmailDto = {
         from: 'serviciosesteban953@gmail.com',
         subjectEmail: 'Bienvenido',
@@ -145,6 +123,7 @@ export class UsersServices {
       try {
         await this.emailService.sendEmail(sendEmailDto);
       } catch (emailError) {
+        // Lanzar excepción si falla el envío del correo
         throw new InternalServerErrorException(
           `Error al enviar el correo a ${data.email}: ${emailError.message}`,
           emailError.stack,
@@ -159,7 +138,7 @@ export class UsersServices {
         message: validationMessageUser.OK.CREATED,
         timestamp: new Date().toISOString(),
         path: this.request.url,
-        data: savedUser,
+        data: savedUser.email,
       };
     } catch (error) {
       // Revertir la transacción en caso de error
@@ -213,9 +192,7 @@ export class UsersServices {
       order: { id: 'ASC' }, // Orden de id
     });
 
-    console.log(data);
-
-    // Mapeo para incluir el nombre y el ID de group_description y state, omitiendo la contraseña
+    // Mapeo para incluir el nombre y el ID de group_description y state.
     const mappedData = data.map((user) => ({
       ...user,
       group_description: user.group_description
@@ -407,6 +384,18 @@ export class UsersServices {
   }
 
   @UseFilters(AllExceptionsFilter)
+  async findAllPassword(id: number): Promise<Password | null> {
+    return await this.passwordRepository.findOne({
+      where: {
+        users: {
+          id: id,
+        },
+        status: true,
+      },
+    });
+  }
+
+  @UseFilters(AllExceptionsFilter)
   async isActive(id: number): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID
@@ -543,6 +532,11 @@ export class UsersServices {
   async changePassword(
     data: UpdatePasswordUserDto,
   ): Promise<Users | AllResponseFilter> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       // Obtener el encabezado Authorization
       const authHeader = this.request.headers['authorization'];
@@ -566,14 +560,24 @@ export class UsersServices {
         throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
       }
 
+
+      const currentPassword = await this.passwordRepository.findOne({
+        where: {
+          users: {
+            id: user.id,
+          },
+          status: true,
+        },
+      })
+
       // Validar la contraseña actual proporcionada
       const isPasswordValid = await bcryptjs.compare(
         data.currentPassword,
-        user.password_id.password,
+        user.password,
       );
 
       if (!isPasswordValid) {
-        throw new ConflictException(
+        throw new UnauthorizedException(
           validationMessageUser.CONFLICT.PASSWORD,
         );
       }
@@ -581,7 +585,7 @@ export class UsersServices {
       // Verificar que la nueva contraseña no sea igual a la anterior
       const isNewPasswordSameAsOld = await bcryptjs.compare(
         data.password,
-        user.password_id.password,
+        user.password,
       );
 
       if (isNewPasswordSameAsOld) {
@@ -592,9 +596,21 @@ export class UsersServices {
 
       const hashedPassword = await bcryptjs.hash(data.password, 10);
       // Actualizar la contraseña en el usuario
-      user.password_id.password = hashedPassword;
+      user.password = hashedPassword;
       user.lastPasswordChange = new Date();
-      const updatedUser = await this.usersRepository.save(user);
+      await queryRunner.manager.save(user);
+
+
+      // Crear y guardar la nueva contraseña
+      const newPassword = new Password();
+      newPassword.password = hashedPassword; // Guardar la contraseña hasheada
+      newPassword.users = user; // Asignar el usuario
+      newPassword.status = true; // Establecer la contraseña como principal
+
+      const updatedUser = await queryRunner.manager.save(newPassword);
+
+      // Confirmar la transacción
+      await queryRunner.commitTransaction();
 
       return {
         statusCode: HttpStatus.OK,
@@ -602,9 +618,9 @@ export class UsersServices {
         timestamp: new Date().toISOString(),
         path: this.request.url,
         data: {
-          id: updatedUser.id,
-          username: updatedUser.username,
-          email: updatedUser.email,
+          id: updatedUser.users.id,
+          username: updatedUser.users.username,
+          email: updatedUser.users.email,
         }, // Retornar el usuario actualizado
       };
     } catch (error) {

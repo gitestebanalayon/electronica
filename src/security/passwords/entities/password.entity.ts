@@ -7,7 +7,6 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -23,12 +22,15 @@ export default class Password {
   })
   password: string;
 
-  @ManyToOne(() => Users, (users) => users.password_id)
-  @JoinColumn([{ name: 'user_id', referencedColumnName: 'id' }])
-  users: Users;
+  @Column('boolean', { name: 'status', default: false })
+  status: boolean;
 
   @Column('boolean', { name: 'is_deleted', default: false })
   is_deleted: boolean;
+
+  @ManyToOne(() => Users, (users) => users.password_id)
+  @JoinColumn([{ name: 'user_id', referencedColumnName: 'id' }])
+  users: Users;
 
   @Exclude()
   @CreateDateColumn({

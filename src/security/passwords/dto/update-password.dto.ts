@@ -10,5 +10,4 @@ export class UpdatePasswordDto extends PartialType(CreatePasswordDto) {
   @IsNotEmpty()
   @IsOptional()
   description?: string;
-
 }

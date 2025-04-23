@@ -3,10 +3,10 @@ import {
   ForbiddenException,
   HttpStatus,
   Inject,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-  Req,
   UnauthorizedException,
   UnprocessableEntityException,
   UseFilters,
@@ -21,7 +21,7 @@ import {
   validationMessageUser,
 } from 'src/common/constants';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import {
   AllExceptionsFilter,
   AllResponseFilter,
@@ -42,6 +42,9 @@ export class AuthService {
     @InjectRepository(Users)
     private readonly usersRepository: Repository<Users>,
 
+    @InjectRepository(Password)
+    private readonly passwordRepository: Repository<Password>,
+
     private readonly usersService: UsersServices,
     private readonly jwtService: JwtService,
     private emailService: EmailService,
@@ -55,6 +58,14 @@ export class AuthService {
     try {
       // Busca al usuario incluyendo el campo de contraseña
       const user = await this.usersService.findOneByEmailWithPassword(email);
+
+      const userPasswords = await this.usersService.findAllPassword(user.id);
+
+      if (!userPasswords) {
+        throw new UnauthorizedException(
+          validationMessageUser.NOT_CONTENT.USER_PASSWORD,
+        );
+      }
 
       if (!user) {
         throw new UnauthorizedException(validationMessageUser.NOT_CONTENT.USER);
@@ -72,9 +83,7 @@ export class AuthService {
 
       // Si el usuario está bloqueado
       if (user.is_locked) {
-        throw new UnauthorizedException(
-          'Su cuenta está bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione "desbloquear cuenta',
-        );
+        throw new UnauthorizedException(validationMessageUser.OK.BLOCKED_USER);
       }
 
       // Verificar la contraseña
@@ -90,15 +99,15 @@ export class AuthService {
 
           await this.usersRepository.save(user); // Guarda el usuario actualizado
           throw new UnauthorizedException(
-            'Su cuenta ha sido bloqueada debido a múltiples intentos fallidos de inicio de sesión, por favor seleccione "desbloquear cuenta"',
+            validationMessageUser.OK.BLOCKED_USER,
           );
         }
 
-        console.log(user.failed_attempts);
-
         // Guardar el usuario con el contador de intentos fallidos actualizado
         await this.usersRepository.save(user);
-        throw new UnauthorizedException('Contraseña incorrecta');
+        throw new UnauthorizedException(
+          `Contraseña incorrecta. Intento ${user.failed_attempts} de 3`,
+        );
       }
 
       // Si la contraseña es correcta, reiniciar el contador de intentos fallidos
@@ -108,7 +117,7 @@ export class AuthService {
       // Verifica si el grupo y los permisos están disponibles
       if (!user.group_description || !user.group_description.groupPermission) {
         throw new UnauthorizedException(
-          'No permissions associated with user group',
+          'No hay permisos asociados al grupo de usuarios',
         );
       }
 
@@ -118,7 +127,7 @@ export class AuthService {
 
       if (!groupPermission) {
         throw new UnauthorizedException(
-          'No permissions found for the user class',
+          'No se encontraron permisos para la clase de usuario',
         );
       }
 
@@ -170,16 +179,16 @@ export class AuthService {
 
       // Si es otro error, lanza un InternalServerErrorException o similar
       throw new InternalServerErrorException(
-        'An error occurred during login. Please try again later.',
+        validationMessageServer.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
-  private async findUserByCredentials(data: LoginDto): Promise<Users | null> {
-    // Busca el usuario en la base de datos por correo electrónico
-    const user = await this.usersService.findOneByEmail(data.email);
-    return user;
-  }
+  // private async findUserByCredentials(data: LoginDto): Promise<Users | null> {
+  //   // Busca el usuario en la base de datos por correo electrónico
+  //   const user = await this.usersService.findOneByEmail(data.email);
+  //   return user;
+  // }
 
   // Método para decodificar el token
   decodeToken(token: string): Promise<{
@@ -228,6 +237,7 @@ export class AuthService {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.CONTENT,
         timestamp: new Date().toISOString(),
+        path: this.request.url,
         path: this.request.url,
         data: true,
       };
@@ -291,6 +301,7 @@ export class AuthService {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.UNLOCK,
         timestamp: new Date().toISOString(),
+        path: this.request.url,
         path: this.request.url,
         data: {
           username: user.username,
@@ -366,6 +377,7 @@ export class AuthService {
         message: validationMessageUser.OK.CODE,
         timestamp: new Date().toISOString(),
         path: this.request.url,
+        path: this.request.url,
         data: {
           username: user.username,
           email: user.email,
@@ -389,6 +401,11 @@ export class AuthService {
   async restorePassword(
     data: RestorePasswordDto,
   ): Promise<Users | AllResponseFilter> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       const user = await this.usersRepository.findOne({
         where: {
@@ -451,17 +468,27 @@ export class AuthService {
       user.recovery_code = null;
       user.password_id.password = hashedPassword;
       user.lastPasswordChange = new Date();
+      user.recovery_code = null;
+      await queryRunner.manager.save(user);
 
-      await this.usersRepository.save(user);
+      // Crear la nueva contraseña
+      const newPassword = new Password();
+      newPassword.password = hashedPassword;
+      newPassword.users = user;
+      newPassword.status = true;
+      const updatedUser = await queryRunner.manager.save(newPassword);
+
+      await queryRunner.commitTransaction();
 
       return {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.RESTORE_PASSWORD,
         timestamp: new Date().toISOString(),
         path: this.request.url,
+        path: this.request.url,
         data: {
-          username: user.username,
-          email: user.email,
+          username: updatedUser.users.username,
+          email: updatedUser.users.email,
         }, // Retornar el usuario actualizado
       };
     } catch (error) {
