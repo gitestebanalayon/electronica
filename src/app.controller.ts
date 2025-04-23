@@ -12,7 +12,7 @@ interface Service {
 @ApiTags('Service')
 @Controller('/service')
 export class AppController {
-  constructor(private readonly appService: AppService) { }
+  constructor(private readonly appService: AppService) {}
 
   @ApiOkResponse({ description: '¡Service available!' })
   @Get()

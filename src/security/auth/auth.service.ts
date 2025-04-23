@@ -3,7 +3,6 @@ import {
   ForbiddenException,
   HttpStatus,
   Inject,
-  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -35,6 +34,7 @@ import { RestorePasswordDto } from './dto/restore-password.dto';
 import { FilterUserDto, FilterUserVerifyDto } from './dto/filter-user.dto';
 import { REQUEST } from '@nestjs/core';
 import { RestoreGmailDto } from './dto/restore-gmail.dto';
+import Password from '../passwords/entities/password.entity';
 
 @Injectable()
 export class AuthService {
@@ -49,8 +49,10 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private emailService: EmailService,
 
+    private readonly dataSource: DataSource,
+
     @Inject(REQUEST) private readonly request: Request,
-  ) { }
+  ) {}
 
   async login({ email, password }: LoginDto): Promise<{
     token: string;
@@ -87,7 +89,10 @@ export class AuthService {
       }
 
       // Verificar la contraseña
-      const passwordMatches = await bcryptjs.compare(password, user.password_id.password);
+      const passwordMatches = await bcryptjs.compare(
+        password,
+        user.password_id.password,
+      );
 
       if (!passwordMatches) {
         // Incrementar el contador de intentos fallidos
@@ -205,9 +210,7 @@ export class AuthService {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async findOne(
-    data: FilterUserDto,
-  ): Promise<Users | AllResponseFilter> {
+  async findOne(data: FilterUserDto): Promise<Users | AllResponseFilter> {
     try {
       // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
       const user = await this.usersRepository.findOne({
@@ -237,7 +240,6 @@ export class AuthService {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.CONTENT,
         timestamp: new Date().toISOString(),
-        path: this.request.url,
         path: this.request.url,
         data: true,
       };
@@ -302,7 +304,6 @@ export class AuthService {
         message: validationMessageUser.OK.UNLOCK,
         timestamp: new Date().toISOString(),
         path: this.request.url,
-        path: this.request.url,
         data: {
           username: user.username,
           email: user.email,
@@ -323,9 +324,7 @@ export class AuthService {
   }
 
   @UseFilters(AllExceptionsFilter)
-  async resetCode(
-    data: RecoveryCodeDto,
-  ): Promise<Users | AllResponseFilter> {
+  async resetCode(data: RecoveryCodeDto): Promise<Users | AllResponseFilter> {
     try {
       const user = await this.usersRepository.findOne({
         where: {
@@ -376,7 +375,6 @@ export class AuthService {
         statusCode: HttpStatus.OK,
         message: validationMessageUser.OK.CODE,
         timestamp: new Date().toISOString(),
-        path: this.request.url,
         path: this.request.url,
         data: {
           username: user.username,
@@ -485,7 +483,6 @@ export class AuthService {
         message: validationMessageUser.OK.RESTORE_PASSWORD,
         timestamp: new Date().toISOString(),
         path: this.request.url,
-        path: this.request.url,
         data: {
           username: updatedUser.users.username,
           email: updatedUser.users.email,
@@ -590,9 +587,7 @@ export class AuthService {
     } catch (error) {
       console.log(error);
 
-      if (
-        error instanceof ConflictException
-      ) {
+      if (error instanceof ConflictException) {
         throw error;
       }
 

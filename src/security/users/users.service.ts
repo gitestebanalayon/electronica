@@ -65,7 +65,7 @@ export class UsersServices {
     private emailService: EmailService,
 
     @Inject(REQUEST) private readonly request: Request,
-  ) { }
+  ) {}
 
   @UseFilters(AllExceptionsFilter)
   async create(data: CreateUserDto): Promise<AllResponseFilter> {
@@ -224,9 +224,9 @@ export class UsersServices {
       ...user,
       group_description: user.group_description
         ? {
-          id: user.group_description.id,
-          name: user.group_description.description, // "description"
-        }
+            id: user.group_description.id,
+            name: user.group_description.description, // "description"
+          }
         : undefined, // Solo incluir el nombre y el ID de group_description si existe
     })) as (Users & {
       group_description: { id: number; name: string } | undefined;
@@ -587,7 +587,6 @@ export class UsersServices {
         throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
       }
 
-
       const currentPassword = await this.passwordRepository.findOne({
         where: {
           users: {
@@ -595,7 +594,7 @@ export class UsersServices {
           },
           status: true,
         },
-      })
+      });
 
       // Validar la contraseña actual proporcionada
       const isPasswordValid = await bcryptjs.compare(
@@ -614,14 +613,19 @@ export class UsersServices {
             id: user.id,
           },
         },
-      })
+      });
 
       findAllPassword.forEach((password) => {
-        const comparePasswords = bcryptjs.compareSync(data.password, password.password);
+        const comparePasswords = bcryptjs.compareSync(
+          data.password,
+          password.password,
+        );
         if (comparePasswords) {
-          throw new ConflictException(validationMessageUser.CONFLICT.SAME_PASSWORD);
+          throw new ConflictException(
+            validationMessageUser.CONFLICT.SAME_PASSWORD,
+          );
         }
-      })
+      });
 
       // Generar la nueva contraseña hasheada
       const hashedPassword = await bcryptjs.hash(data.password, 10);
@@ -632,7 +636,6 @@ export class UsersServices {
 
       user.lastPasswordChange = new Date();
       await queryRunner.manager.save(user);
-
 
       // Crear y guardar la nueva contraseña
       const newPassword = new Password();

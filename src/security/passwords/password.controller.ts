@@ -15,7 +15,7 @@ import { Maintenance } from '../auth/guard/maintenance.guard';
 @ApiTags('Password')
 @Controller('password')
 export class PasswordController {
-  constructor(private readonly passwordService: PasswordService) { }
+  constructor(private readonly passwordService: PasswordService) {}
 
   @Post('create')
   @AuthWithProfiles([Profilee.ADMIN], { create: true })

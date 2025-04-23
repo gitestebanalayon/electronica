@@ -5,7 +5,7 @@ import { Maintenance } from '../auth/guard/maintenance.guard';
 @UseGuards(Maintenance)
 @Controller('api/email')
 export class EmailController {
-  constructor(private emailService: EmailService) { }
+  constructor(private emailService: EmailService) {}
 
   // Especificar el tipo de retorno como Promise<void>
   // @Get('health')

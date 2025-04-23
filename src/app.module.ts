@@ -40,4 +40,4 @@ import { PasswordModule } from './security/passwords/password.module';
     AppService,
   ],
 })
-export class AppModule { }
+export class AppModule {}

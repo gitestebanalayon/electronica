@@ -56,7 +56,8 @@ export const validationMessageUser = {
     EMAIL: 'El correo ya existe',
     CI: 'La cédula ya existe',
     PASSWORD: 'Contraseña actual incorrecta',
-    SAME_PASSWORD: 'Esta contraseña ya ha sido utilizada anteriormente, por favor proporcione una nueva',
+    SAME_PASSWORD:
+      'Esta contraseña ya ha sido utilizada anteriormente, por favor proporcione una nueva',
   },
 
   NOT_CONTENT: {

@@ -29,7 +29,7 @@ import { Maintenance } from '../auth/guard/maintenance.guard';
 @ApiTags('Account')
 @Controller('account')
 export class UsuariosController {
-  constructor(private readonly usersServices: UsersServices) { }
+  constructor(private readonly usersServices: UsersServices) {}
 
   @Post('create')
   @AuthWithProfiles([Profilee.ADMIN], { create: true })
@@ -106,7 +106,6 @@ export class UsuariosController {
   //   description: 'No es necesario enviar el id',
   //   type: Number,
   // })
-
 
   @Put('update/profile')
   @AuthWithProfiles([Profilee.ADMIN, Profilee.DIRECTOR, Profilee.USER], {

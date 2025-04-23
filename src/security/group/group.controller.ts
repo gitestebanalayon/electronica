@@ -27,7 +27,7 @@ import { Maintenance } from '../auth/guard/maintenance.guard';
 @ApiTags('Group')
 @Controller('group')
 export class GroupController {
-  constructor(private readonly groupService: GroupService) { }
+  constructor(private readonly groupService: GroupService) {}
 
   @Post('create')
   @AuthWithProfiles([Profilee.ADMIN], { create: true })
