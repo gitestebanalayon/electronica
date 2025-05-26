@@ -52,7 +52,7 @@ export class AuthService {
     private readonly dataSource: DataSource,
 
     @Inject(REQUEST) private readonly request: Request,
-  ) {}
+  ) { }
 
   async login({ email, password }: LoginDto): Promise<{
     token: string;
@@ -87,9 +87,6 @@ export class AuthService {
       if (user.is_locked) {
         throw new UnauthorizedException(validationMessageUser.OK.BLOCKED_USER);
       }
-
-      console.log(user);
-      
 
       // Verificar la contraseña
       const passwordMatches = await bcryptjs.compare(
@@ -416,6 +413,7 @@ export class AuthService {
           is_active: true,
           is_staff: true,
         },
+        relations: ['password_id']
       });
 
       if (!user) {
@@ -466,10 +464,26 @@ export class AuthService {
         );
       }
 
+      // 1. Desactivar la contraseña actual si existe
+      const password = await this.passwordRepository.find({
+        where: {
+          status: true,  // Solo contraseñas activas
+          is_deleted: false  // Que no estén eliminadas
+        },
+        order: {
+          createAt: 'DESC'  // Ordenar por fecha de creación ascendente (más antigua primero)
+        },
+        take: 1  // Tomar solo el primer resultado
+      });
+
+      if (password[0]) {
+        password[0].status = false;
+        await queryRunner.manager.save(password);
+      }
+
       user.recovery_code = null;
-      user.password_id.password = hashedPassword;
       user.lastPasswordChange = new Date();
-      user.recovery_code = null;
+
       await queryRunner.manager.save(user);
 
       // Crear la nueva contraseña
