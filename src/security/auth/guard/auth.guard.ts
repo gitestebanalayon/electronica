@@ -18,14 +18,14 @@ export class JwtAuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     @InjectRepository(Users)
     private readonly usersRepository: Repository<Users>,
-  ) {}
+  ) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
 
     if (!token) {
-      throw new UnauthorizedException('Token no valido');
+      throw new UnauthorizedException('Token no válido');
     }
 
     try {
@@ -53,7 +53,11 @@ export class JwtAuthGuard implements CanActivate {
       // Agregar los datos del usuario al request
       request.user = payload;
     } catch (error) {
-      console.log(error);
+      console.log(error.name);
+      // Add specific handling for invalid signature
+      if (error.name === 'JsonWebTokenError') {
+        throw new UnauthorizedException('Token no válido');
+      }
 
       // Manejar el error de token expirado
       if (error instanceof TokenExpiredError) {
@@ -61,6 +65,7 @@ export class JwtAuthGuard implements CanActivate {
           'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
         );
       }
+
 
       if (error instanceof UnauthorizedException) {
         throw error;

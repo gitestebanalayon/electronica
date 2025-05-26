@@ -88,10 +88,13 @@ export class AuthService {
         throw new UnauthorizedException(validationMessageUser.OK.BLOCKED_USER);
       }
 
+      console.log(user);
+      
+
       // Verificar la contraseña
       const passwordMatches = await bcryptjs.compare(
         password,
-        user.password_id.password,
+        userPasswords.password,
       );
 
       if (!passwordMatches) {
