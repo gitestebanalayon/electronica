@@ -9,6 +9,7 @@ import {
 
 import Group from '../../group/entities/group.entity';
 import Password from 'src/security/passwords/entities/password.entity';
+import { Correo } from 'src/security/correos/entities/correo.entity';
 
 @Entity('user', { schema: 'security' })
 export default class Users {
@@ -21,8 +22,8 @@ export default class Users {
   @Column('varchar', { name: 'username', length: 30 })
   username: string;
 
-  @Column('varchar', { name: 'email', length: 100 })
-  email: string;
+  // @Column('varchar', { name: 'email', length: 100 })
+  // email: string;
 
   @Column('character', { name: 'nationality', length: 1 })
   origen: 'V' | 'E'; // Restricción de valores
@@ -45,8 +46,16 @@ export default class Users {
   })
   password_id: Password;
 
+  @OneToMany(() => Correo, (gmail) => gmail.users, {
+    nullable: true,
+  })
+  gmail_id: Correo[];
+
   @Column({ type: 'timestamp', nullable: true })
   lastPasswordChange: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastCorreoChange: Date;
 
   @Column('boolean', { name: 'is_locked', default: false })
   is_locked: boolean;

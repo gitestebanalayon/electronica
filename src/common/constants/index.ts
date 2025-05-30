@@ -93,3 +93,27 @@ export const validationMessageGroup = {
     GROUPS: 'No hay grupos',
   },
 };
+
+export const validationMessageCorreo = {
+  OK: {
+    CREATED: 'Correo creado exitosamente',
+    CONTENT: 'Correo encontrado exitosamente',
+    DELETE: 'Correo eliminado exitosamente',
+    ACTIVATED: 'Correo activado exitosamente'
+  },
+
+  NOT_OK: {
+    CREATED: 'Error al crear el correo',
+    DELETE: 'Error al eliminar el correo',
+    DENIED: 'Este correo ya ha sido eliminado y no se puede restaurar.',
+  },
+
+  CONFLICT: {
+    EMAIL: 'El correo ya existe',
+  },
+
+  NOT_CONTENT: {
+    CORREO: 'El correo no existe',
+    CORREOS: 'No hay correos',
+  },
+};

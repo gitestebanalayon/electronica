@@ -36,6 +36,7 @@ import { EmailService } from '../email/services/email/email.service';
 
 // MENSAJE VALIDACIONES
 import {
+  validationMessageCorreo,
   validationMessageGroup,
   validationMessageServer,
   validationMessageUser,
@@ -47,6 +48,8 @@ import { REQUEST } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
 import Password from '../passwords/entities/password.entity';
+import { Correo } from '../correos/entities/correo.entity';
+import { ActiveCorreoUserDto } from './dto/update-correo.users.dto';
 
 @Injectable()
 export class UsersServices {
@@ -60,12 +63,15 @@ export class UsersServices {
     @InjectRepository(Password)
     private readonly passwordRepository: Repository<Password>,
 
+    @InjectRepository(Correo)
+    private readonly correoRepository: Repository<Correo>,
+
     private readonly dataSource: DataSource,
 
     private emailService: EmailService,
 
     @Inject(REQUEST) private readonly request: Request,
-  ) {}
+  ) { }
 
   @UseFilters(AllExceptionsFilter)
   async create(data: CreateUserDto): Promise<AllResponseFilter> {
@@ -76,8 +82,8 @@ export class UsersServices {
 
     try {
       // Verificar si ya existe un usuario activo con el mismo email
-      const existingUserByEmail = await this.usersRepository.findOne({
-        where: { email: data.email, is_active: true },
+      const existingUserByEmail = await this.correoRepository.findOne({
+        where: { gmail: data.email, is_deleted: false },
       });
       if (existingUserByEmail) {
         throw new ConflictException(validationMessageUser.CONFLICT.EMAIL);
@@ -115,7 +121,6 @@ export class UsersServices {
       const user = new Users();
       user.code = data.origen + data.ci;
       user.username = data.username;
-      user.email = data.email;
       user.origen = data.origen;
       user.ci = data.ci;
       user.first_name = data.first_name;
@@ -136,6 +141,13 @@ export class UsersServices {
       password.status = true; // Establecer la contraseña como principal
 
       await queryRunner.manager.save(password);
+
+      // Crear y guardar el gmail en la tabla correo
+      const correo = new Correo();
+      correo.gmail = data.email;
+      correo.users = savedUser;
+
+      await queryRunner.manager.save(correo);
 
       // Enviar correo con la contraseña generada
       const sendEmailDto: SendEmailDto = {
@@ -165,7 +177,7 @@ export class UsersServices {
         message: validationMessageUser.OK.CREATED,
         timestamp: new Date().toISOString(),
         path: this.request.url,
-        data: savedUser.email,
+        data: savedUser.gmail_id[0].gmail,
       };
     } catch (error) {
       // Revertir la transacción en caso de error
@@ -205,10 +217,6 @@ export class UsersServices {
       where.username = ILike(`%${query.username}%`); // Filtrar por email
     }
 
-    if (query.email) {
-      where.email = ILike(`%${query.email}%`); // Filtrar por email
-    }
-
     const [data, totalData] = await this.usersRepository.findAndCount({
       where,
       take,
@@ -224,9 +232,9 @@ export class UsersServices {
       ...user,
       group_description: user.group_description
         ? {
-            id: user.group_description.id,
-            name: user.group_description.description, // "description"
-          }
+          id: user.group_description.id,
+          name: user.group_description.description, // "description"
+        }
         : undefined, // Solo incluir el nombre y el ID de group_description si existe
     })) as (Users & {
       group_description: { id: number; name: string } | undefined;
@@ -295,12 +303,9 @@ export class UsersServices {
       }
 
       // Validar email, cédula y username solo si se proporcionan
-      if (data.email || data.ci || data.username) {
+      if (data.ci || data.username) {
         // Crear condiciones para la búsqueda
         const whereConditions = [];
-        if (data.email) {
-          whereConditions.push({ email: data.email, is_active: false });
-        }
         if (data.ci) {
           whereConditions.push({ ci: data.ci, is_active: false });
         }
@@ -316,9 +321,7 @@ export class UsersServices {
         if (existingUser && existingUser.id !== id) {
           // Determinar cuál de los campos tiene conflicto
           let message = '';
-          if (existingUser.email === data.email) {
-            message = validationMessageUser.CONFLICT.EMAIL;
-          } else if (Number(existingUser.ci) === Number(data.ci)) {
+          if (Number(existingUser.ci) === Number(data.ci)) {
             message = validationMessageUser.CONFLICT.CI;
           } else if (existingUser.username === data.username) {
             message = validationMessageUser.CONFLICT.USER;
@@ -395,7 +398,7 @@ export class UsersServices {
   @UseFilters(AllExceptionsFilter)
   async findOneByEmail(email: string): Promise<Users> {
     return this.usersRepository.findOne({
-      where: { email },
+      where: { gmail_id: { gmail: email } },
       relations: {
         group_description: true, // Incluir los perfiles relacionados
       },
@@ -404,9 +407,24 @@ export class UsersServices {
 
   @UseFilters(AllExceptionsFilter)
   async findOneByEmailWithPassword(email: string): Promise<Users | null> {
+    console.log(email);
+
+
     return await this.usersRepository.findOne({
-      where: { email },
-      relations: ['group_description', 'group_description.groupPermission'],
+      where: { gmail_id: { gmail: email } },
+      relations: ['group_description', 'group_description.groupPermission', 'gmail_id'],
+    });
+  }
+
+  @UseFilters(AllExceptionsFilter)
+  async findCorreo(email: string): Promise<Correo | null> {
+    return await this.correoRepository.findOne({
+      where: {
+        gmail: email,
+        is_deleted: false,
+        status: true,
+      },
+      relations: ['users']
     });
   }
 
@@ -580,7 +598,10 @@ export class UsersServices {
       }
 
       const user = await this.usersRepository.findOne({
-        where: { id: decoded.id, is_active: true },
+        where: { 
+          id: decoded.id, is_active: true,
+        },
+        relations: ['gmail_id']
       });
 
       if (!user) {
@@ -645,6 +666,14 @@ export class UsersServices {
 
       const updatedUser = await queryRunner.manager.save(newPassword);
 
+
+      // Obtener correo PRINCIPAL (con status=true)
+      const primaryEmail = user.gmail_id.find(gmail => gmail.status === true);
+      if (!primaryEmail) {
+        throw new UnauthorizedException('No se encontró un correo principal válido');
+      }
+
+
       // Confirmar la transacción
       await queryRunner.commitTransaction();
 
@@ -656,7 +685,7 @@ export class UsersServices {
         data: {
           id: updatedUser.users.id,
           username: updatedUser.users.username,
-          email: updatedUser.users.email,
+          email: primaryEmail.gmail,
         }, // Retornar el usuario actualizado
       };
     } catch (error) {
@@ -693,6 +722,7 @@ export class UsersServices {
       // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
       const user = await this.usersRepository.findOne({
         where: { id: decoded.id },
+        relations: ['gmail_id']
       });
 
       // En caso de no existir el usuario
@@ -777,6 +807,101 @@ export class UsersServices {
       if (
         error instanceof NotFoundException ||
         error instanceof ConflictException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  @UseFilters(AllExceptionsFilter)
+  async changeCorreo(
+    data: ActiveCorreoUserDto,
+  ): Promise<Users | AllResponseFilter> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Obtener el encabezado Authorization
+      const authHeader = this.request.headers['authorization'];
+      let decoded: JwtPayload;
+
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice(7, authHeader.length); // Extraemos el token
+
+        decoded = jwt.decode(token) as JwtPayload;
+      } else {
+        throw new ConflictException(
+          'No se ha proporcionado un token de autorización',
+        );
+      }
+
+      const user = await this.usersRepository.findOne({
+        where: { 
+          id: decoded.id, is_active: true,
+        },
+        relations: ['gmail_id']
+      });
+
+      console.log(user);
+      
+
+      if (!user) {
+        throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
+      }
+
+      const desactiveCorreo = await this.correoRepository.findOne({
+        where: {
+          users: {
+            id: user.id,
+          },
+          status: true,
+        },
+      });
+     
+      // Desactivar el correo actual
+      desactiveCorreo.status = false;
+      await queryRunner.manager.save(desactiveCorreo);
+
+      user.lastCorreoChange = new Date();
+      await queryRunner.manager.save(user);
+
+      const correoActivar = await this.correoRepository.findOne({
+        where: {
+          id: data.id,
+          users: decoded.id
+        }
+      })
+
+      correoActivar.status = true;
+      const updatedUser = await queryRunner.manager.save(correoActivar);
+
+
+      
+
+    
+
+      // Confirmar la transacción
+      await queryRunner.commitTransaction();
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: validationMessageCorreo.OK.ACTIVATED,
+        timestamp: new Date().toISOString(),
+        path: this.request.url,
+        data: {
+          email: updatedUser.gmail,
+        }, // Retornar el usuario actualizado
+      };
+    } catch (error) {
+      console.log(error);
+
+      if (
+        error instanceof ConflictException ||
+        error instanceof UnauthorizedException
       ) {
         throw error;
       }

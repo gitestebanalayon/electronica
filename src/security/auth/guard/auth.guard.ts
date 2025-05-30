@@ -50,6 +50,16 @@ export class JwtAuthGuard implements CanActivate {
         );
       }
 
+      // Validar si el token es anterior al último cambio de contraseña
+      // if (
+      //   user.lastCorreoChange &&
+      //   payload.iat * 1000 < user.lastCorreoChange.getTime()
+      // ) {
+      //   throw new UnauthorizedException(
+      //     'Tu sesión ha expirado debido al cambio de correo. Por favor, inicia sesión nuevamente.',
+      //   );
+      // }
+
       // Agregar los datos del usuario al request
       request.user = payload;
     } catch (error) {

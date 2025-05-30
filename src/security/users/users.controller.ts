@@ -22,6 +22,7 @@ import Users from './entities/users.entity';
 import { UpdatePasswordUserDto } from './dto/update-password-users.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { Maintenance } from '../auth/guard/maintenance.guard';
+import { ActiveCorreoUserDto } from './dto/update-correo.users.dto';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -29,7 +30,7 @@ import { Maintenance } from '../auth/guard/maintenance.guard';
 @ApiTags('Account')
 @Controller('account')
 export class UsuariosController {
-  constructor(private readonly usersServices: UsersServices) {}
+  constructor(private readonly usersServices: UsersServices) { }
 
   @Post('create')
   @AuthWithProfiles([Profilee.ADMIN], { create: true })
@@ -40,7 +41,6 @@ export class UsuariosController {
   @Get('read')
   @AuthWithProfiles([Profilee.ADMIN], { read: true })
   @ApiQuery({ name: 'username', type: 'string', required: false })
-  @ApiQuery({ name: 'email', type: 'string', required: false })
   @ApiQuery({ name: 'page', type: 'number', required: false })
   @ApiQuery({ name: 'take', type: 'number', required: false })
   findTable(@Query() query: FilterUserDto): Promise<ResponseUsersDto> {
@@ -115,5 +115,16 @@ export class UsuariosController {
     @Body() data: UpdateProfileDto,
   ): Promise<Users | AllResponseFilter> {
     return this.usersServices.updateProfile(data);
+  }
+
+  // Todos los roles pueden cambiar su contraseña
+  @Put('active/correo')
+  @AuthWithProfiles([Profilee.ADMIN, Profilee.DIRECTOR, Profilee.USER], {
+    update: true,
+  })
+  async changeCorreo(
+    @Body() data: ActiveCorreoUserDto,
+  ): Promise<Users | AllResponseFilter> {
+    return this.usersServices.changeCorreo(data);
   }
 }

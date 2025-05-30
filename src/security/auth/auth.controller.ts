@@ -86,7 +86,6 @@ export class AuthController {
     @Body() data: UnlockAccountDto,
   ): Promise<Users | AllResponseFilter> {
     return await this.authServices.unlockAccount(data);
-    return await this.authServices.unlockAccount(data);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -94,7 +93,6 @@ export class AuthController {
   async resetCode(
     @Body() data: RecoveryCodeDto,
   ): Promise<Users | AllResponseFilter> {
-    return await this.authServices.resetCode(data);
     return await this.authServices.resetCode(data);
   }
 

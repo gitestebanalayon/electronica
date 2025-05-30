@@ -58,8 +58,23 @@ export class AuthService {
     token: string;
   }> {
     try {
+
+
       // Busca al usuario incluyendo el campo de contraseña
-      const user = await this.usersService.findOneByEmailWithPassword(email);
+      const verifyCorreo = await this.usersService.findCorreo(email);
+
+      if (!verifyCorreo) {
+        throw new UnauthorizedException(
+          validationMessageUser.NOT_CONTENT.USER,
+        );
+      }
+
+      const user = await this.usersRepository.findOne({
+        where: {
+          id: verifyCorreo.users.id,
+        },
+        relations: ['group_description', 'group_description.groupPermission', 'gmail_id']
+      })
 
       const userPasswords = await this.usersService.findAllPassword(user.id);
 
@@ -115,9 +130,16 @@ export class AuthService {
         );
       }
 
+      // Obtener correo PRINCIPAL (con status=true)
+      const primaryEmail = user.gmail_id.find(gmail => gmail.status === true);
+      if (!primaryEmail) {
+        throw new UnauthorizedException('No se encontró un correo principal válido');
+      }
+
       // Si la contraseña es correcta, reiniciar el contador de intentos fallidos
       user.failed_attempts = 0;
       await this.usersRepository.save(user);
+
 
       // Verifica si el grupo y los permisos están disponibles
       if (!user.group_description || !user.group_description.groupPermission) {
@@ -157,7 +179,7 @@ export class AuthService {
         id: user.id,
         first_name: user.first_name,
         last_name: user.last_name,
-        email: user.email,
+        email: primaryEmail.gmail,
         groupId: groupId.map((group) => group.description),
         permissions,
         is_root: user.is_root,
@@ -214,7 +236,8 @@ export class AuthService {
     try {
       // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
       const user = await this.usersRepository.findOne({
-        where: { ci: data.ci, email: data.email, birthdate: data.birthdate },
+        where: { ci: data.ci, gmail_id: { gmail: data.email, status: true, is_deleted: false }, birthdate: data.birthdate },
+        relations: ['gmail_id']
       });
 
       // En caso de no existir el usuario
@@ -225,7 +248,7 @@ export class AuthService {
       const userIsLocked = await this.usersRepository.findOne({
         where: {
           ci: data.ci,
-          email: data.email,
+          gmail_id: { gmail: data.email, status: true, is_deleted: false },
           birthdate: data.birthdate,
           is_locked: true,
         },
@@ -264,12 +287,13 @@ export class AuthService {
     try {
       const userExist = await this.usersRepository.findOne({
         where: {
-          email: data.email,
+          gmail_id: { gmail: data.email, status: true, is_deleted: false },
           ci: data.ci,
           birthdate: data.birthdate,
           is_active: true,
           is_staff: true,
         },
+        relations: ['gmail_id']
       });
 
       if (!userExist) {
@@ -278,13 +302,14 @@ export class AuthService {
 
       const user = await this.usersRepository.findOne({
         where: {
-          email: data.email,
+          gmail_id: { gmail: data.email, status: true, is_deleted: false },
           ci: data.ci,
           birthdate: data.birthdate,
           is_active: true,
           is_staff: true,
           is_locked: true,
         },
+        relations: ['gmail_id']
       });
 
       if (!user) {
@@ -306,7 +331,7 @@ export class AuthService {
         path: this.request.url,
         data: {
           username: user.username,
-          email: user.email,
+          email: user.gmail_id[0].gmail,
         }, // Retornar el usuario actualizado
       };
     } catch (error) {
@@ -328,12 +353,13 @@ export class AuthService {
     try {
       const user = await this.usersRepository.findOne({
         where: {
-          email: data.email,
+          gmail_id: { gmail: data.email, status: true, is_deleted: false },
           ci: data.ci,
           birthdate: data.birthdate,
           is_active: true,
           is_staff: true,
         },
+        relations: ['gmail_id']
       });
 
       if (!user) {
@@ -351,7 +377,7 @@ export class AuthService {
       const sendEmailDto: SendEmailDto = {
         from: 'serviciosesteban953@gmail.com',
         subjectEmail: 'Bienvenido',
-        sendTo: user.email,
+        sendTo: user.gmail_id[0].gmail,
         template: 'welcome',
         params: { password: code, username: user.username },
       };
@@ -378,7 +404,7 @@ export class AuthService {
         path: this.request.url,
         data: {
           username: user.username,
-          email: user.email,
+          email: user.gmail_id[0].gmail,
         }, // Retornar el usuario actualizado
       };
     } catch (error) {
@@ -407,13 +433,13 @@ export class AuthService {
     try {
       const user = await this.usersRepository.findOne({
         where: {
-          email: data.email,
+          gmail_id: { gmail: data.email, is_deleted: false },
           ci: data.ci,
           birthdate: data.birthdate,
           is_active: true,
           is_staff: true,
         },
-        relations: ['password_id']
+        relations: ['password_id', 'gmail_id']
       });
 
       if (!user) {
@@ -444,11 +470,17 @@ export class AuthService {
       const generatePassword = Math.random().toString(36).slice(-8);
       const hashedPassword = await bcryptjs.hash(generatePassword, 10);
 
+       // Obtener correo PRINCIPAL (con status=true)
+       const primaryEmail = user.gmail_id.find(gmail => gmail.status === true);
+       if (!primaryEmail) {
+         throw new UnauthorizedException('No se encontró un correo principal válido');
+       }
+
       // Preparar los datos del correo
       const sendEmailDto: SendEmailDto = {
         from: 'serviciosesteban953@gmail.com',
         subjectEmail: 'Bienvenido',
-        sendTo: user.email,
+        sendTo: primaryEmail.gmail,
         template: 'welcome',
         params: { password: generatePassword, username: user.username },
       };
@@ -467,13 +499,14 @@ export class AuthService {
       // 1. Desactivar la contraseña actual si existe
       const password = await this.passwordRepository.find({
         where: {
+          users: { id: user.id },
           status: true,  // Solo contraseñas activas
           is_deleted: false  // Que no estén eliminadas
         },
         order: {
-          createAt: 'DESC'  // Ordenar por fecha de creación ascendente (más antigua primero)
+          createAt: 'DESC'
         },
-        take: 1  // Tomar solo el primer resultado
+        take: 1,  // Tomar solo el primer resultado
       });
 
       if (password[0]) {
@@ -502,7 +535,7 @@ export class AuthService {
         path: this.request.url,
         data: {
           username: updatedUser.users.username,
-          email: updatedUser.users.email,
+          email: updatedUser.users.gmail_id[0].gmail,
         }, // Retornar el usuario actualizado
       };
     } catch (error) {
@@ -577,7 +610,9 @@ export class AuthService {
       const user = await this.usersRepository.findOne({
         where: {
           ci: data.ci,
+          gmail_id: { status: true }
         },
+        relations: ['gmail_id']
       });
 
       if (!user) {
@@ -588,7 +623,7 @@ export class AuthService {
         throw new ConflictException(validationMessageUser.OK.BLOCKED);
       }
 
-      user.email = data.email;
+      user.gmail_id[0].gmail = data.email;
 
       await this.usersRepository.save(user);
 

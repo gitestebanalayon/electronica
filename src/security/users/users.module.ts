@@ -8,10 +8,11 @@ import Group from '../group/entities/group.entity';
 import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
 import Password from '../passwords/entities/password.entity';
+import { Correo } from '../correos/entities/correo.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Users, Group, Password]),
+    TypeOrmModule.forFeature([Users, Group, Password, Correo]),
     EmailModule,
     forwardRef(() => AuthModule),
   ],

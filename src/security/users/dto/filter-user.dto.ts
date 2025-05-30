@@ -8,9 +8,9 @@ export class FilterUserDto {
   @IsString({ message: validationMessageTypes.IS_STRING })
   username?: string;
 
-  @IsOptional()
-  @IsEmail({}, { message: validationMessageTypes.IS_EMAIL })
-  email?: string;
+  // @IsOptional()
+  // @IsEmail({}, { message: validationMessageTypes.IS_EMAIL })
+  // email?: string;
 
   @IsOptional()
   @IsNumber({}, { message: validationMessageTypes.IS_NUMBER })

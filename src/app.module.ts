@@ -16,6 +16,7 @@ import { AppService } from './app.service';
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './core/errors/all-exceptions.filter';
 import { PasswordModule } from './security/passwords/password.module';
+import { CorreosModule } from './security/correos/correos.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { PasswordModule } from './security/passwords/password.module';
     GroupModule,
     PasswordModule,
     AuthModule,
+    CorreosModule,
   ],
   controllers: [AppController],
   providers: [
