@@ -99,7 +99,7 @@ export const validationMessageCorreo = {
     CREATED: 'Correo creado exitosamente',
     CONTENT: 'Correo encontrado exitosamente',
     DELETE: 'Correo eliminado exitosamente',
-    ACTIVATED: 'Correo activado exitosamente'
+    ACTIVATED: 'Correo activado exitosamente',
   },
 
   NOT_OK: {

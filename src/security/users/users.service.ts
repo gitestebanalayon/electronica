@@ -71,7 +71,7 @@ export class UsersServices {
     private emailService: EmailService,
 
     @Inject(REQUEST) private readonly request: Request,
-  ) { }
+  ) {}
 
   @UseFilters(AllExceptionsFilter)
   async create(data: CreateUserDto): Promise<AllResponseFilter> {
@@ -232,9 +232,9 @@ export class UsersServices {
       ...user,
       group_description: user.group_description
         ? {
-          id: user.group_description.id,
-          name: user.group_description.description, // "description"
-        }
+            id: user.group_description.id,
+            name: user.group_description.description, // "description"
+          }
         : undefined, // Solo incluir el nombre y el ID de group_description si existe
     })) as (Users & {
       group_description: { id: number; name: string } | undefined;
@@ -409,10 +409,13 @@ export class UsersServices {
   async findOneByEmailWithPassword(email: string): Promise<Users | null> {
     console.log(email);
 
-
     return await this.usersRepository.findOne({
       where: { gmail_id: { gmail: email } },
-      relations: ['group_description', 'group_description.groupPermission', 'gmail_id'],
+      relations: [
+        'group_description',
+        'group_description.groupPermission',
+        'gmail_id',
+      ],
     });
   }
 
@@ -424,7 +427,7 @@ export class UsersServices {
         is_deleted: false,
         status: true,
       },
-      relations: ['users']
+      relations: ['users'],
     });
   }
 
@@ -598,10 +601,11 @@ export class UsersServices {
       }
 
       const user = await this.usersRepository.findOne({
-        where: { 
-          id: decoded.id, is_active: true,
+        where: {
+          id: decoded.id,
+          is_active: true,
         },
-        relations: ['gmail_id']
+        relations: ['gmail_id'],
       });
 
       if (!user) {
@@ -666,13 +670,13 @@ export class UsersServices {
 
       const updatedUser = await queryRunner.manager.save(newPassword);
 
-
       // Obtener correo PRINCIPAL (con status=true)
-      const primaryEmail = user.gmail_id.find(gmail => gmail.status === true);
+      const primaryEmail = user.gmail_id.find((gmail) => gmail.status === true);
       if (!primaryEmail) {
-        throw new UnauthorizedException('No se encontró un correo principal válido');
+        throw new UnauthorizedException(
+          'No se encontró un correo principal válido',
+        );
       }
-
 
       // Confirmar la transacción
       await queryRunner.commitTransaction();
@@ -722,7 +726,7 @@ export class UsersServices {
       // Buscar el usuario por ID e incluir relaciones de perfiles (roles)
       const user = await this.usersRepository.findOne({
         where: { id: decoded.id },
-        relations: ['gmail_id']
+        relations: ['gmail_id'],
       });
 
       // En caso de no existir el usuario
@@ -840,14 +844,14 @@ export class UsersServices {
       }
 
       const user = await this.usersRepository.findOne({
-        where: { 
-          id: decoded.id, is_active: true,
+        where: {
+          id: decoded.id,
+          is_active: true,
         },
-        relations: ['gmail_id']
+        relations: ['gmail_id'],
       });
 
       console.log(user);
-      
 
       if (!user) {
         throw new ConflictException(validationMessageUser.NOT_CONTENT.USER);
@@ -861,7 +865,7 @@ export class UsersServices {
           status: true,
         },
       });
-     
+
       // Desactivar el correo actual
       desactiveCorreo.status = false;
       await queryRunner.manager.save(desactiveCorreo);
@@ -872,17 +876,12 @@ export class UsersServices {
       const correoActivar = await this.correoRepository.findOne({
         where: {
           id: data.id,
-          users: decoded.id
-        }
-      })
+          users: decoded.id,
+        },
+      });
 
       correoActivar.status = true;
       const updatedUser = await queryRunner.manager.save(correoActivar);
-
-
-      
-
-    
 
       // Confirmar la transacción
       await queryRunner.commitTransaction();

@@ -30,7 +30,7 @@ import { ActiveCorreoUserDto } from './dto/update-correo.users.dto';
 @ApiTags('Account')
 @Controller('account')
 export class UsuariosController {
-  constructor(private readonly usersServices: UsersServices) { }
+  constructor(private readonly usersServices: UsersServices) {}
 
   @Post('create')
   @AuthWithProfiles([Profilee.ADMIN], { create: true })

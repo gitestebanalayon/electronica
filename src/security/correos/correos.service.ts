@@ -1,14 +1,29 @@
-import { ConflictException, HttpStatus, Inject, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException, UseFilters } from '@nestjs/common';
+import {
+  ConflictException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
+  UseFilters,
+} from '@nestjs/common';
 import { CreateCorreoDto } from './dto/create-correo.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Correo } from './entities/correo.entity';
 import { DataSource, FindOptionsWhere, ILike, Repository } from 'typeorm';
-import { AllExceptionsFilter, AllResponseFilter } from 'src/core/errors/all-exceptions.filter';
+import {
+  AllExceptionsFilter,
+  AllResponseFilter,
+} from 'src/core/errors/all-exceptions.filter';
 import { REQUEST } from '@nestjs/core';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
 import Users from '../users/entities/users.entity';
-import { validationMessageCorreo, validationMessageUser } from 'src/common/constants';
+import {
+  validationMessageCorreo,
+  validationMessageUser,
+} from 'src/common/constants';
 import { FilterCorreoDto, ResponseCorreosDto } from './dto/filter-correo.dto';
 
 @Injectable()
@@ -23,7 +38,7 @@ export class CorreosService {
     private readonly dataSource: DataSource,
 
     @Inject(REQUEST) private readonly request: Request,
-  ) { }
+  ) {}
 
   @UseFilters(AllExceptionsFilter)
   async create(data: CreateCorreoDto): Promise<Correo | AllResponseFilter> {
@@ -58,8 +73,8 @@ export class CorreosService {
       }
 
       const verifyCorreo = await this.correoRepository.findOne({
-        where: { gmail: data.email }
-      })
+        where: { gmail: data.email },
+      });
 
       if (verifyCorreo) {
         throw new ConflictException(validationMessageCorreo.CONFLICT.EMAIL);
@@ -80,7 +95,7 @@ export class CorreosService {
         timestamp: new Date().toISOString(),
         path: this.request.url,
         data: {
-          email: createCorreo.gmail
+          email: createCorreo.gmail,
         },
       };
     } catch (error) {
@@ -94,7 +109,6 @@ export class CorreosService {
       }
 
       throw new InternalServerErrorException(error);
-
     }
   }
 
@@ -139,9 +153,7 @@ export class CorreosService {
     } catch (error) {
       console.log(error);
 
-      if (
-        error instanceof NotFoundException
-      ) {
+      if (error instanceof NotFoundException) {
         throw error;
       }
 
@@ -167,7 +179,6 @@ export class CorreosService {
 
     console.log(decoded.id);
 
-
     // Configuración de paginación (comenzando desde página 1)
     const take = Math.max(1, Number(query.take) || 10); // Mínimo 1 registro por página
     const page = Math.max(1, Number(query.page) || 1); // Página mínima 1
@@ -175,7 +186,7 @@ export class CorreosService {
 
     const where: FindOptionsWhere<Correo> = {
       is_deleted: false,
-      users: { id: decoded.id }
+      users: { id: decoded.id },
     };
 
     if (query.email) {
@@ -189,11 +200,9 @@ export class CorreosService {
       relations: ['users'],
       order: {
         status: 'DESC', // Primero los que tienen status = true (DESC porque true > false)
-        id: 'ASC'       // Luego ordenados por ID ascendente
+        id: 'ASC', // Luego ordenados por ID ascendente
       },
     });
-
-
 
     const totalPages = Math.ceil(totalData / take);
 

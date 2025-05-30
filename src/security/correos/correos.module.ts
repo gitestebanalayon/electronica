@@ -16,4 +16,4 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   exports: [CorreosService, TypeOrmModule],
   controllers: [CorreosController],
 })
-export class CorreosModule { }
+export class CorreosModule {}

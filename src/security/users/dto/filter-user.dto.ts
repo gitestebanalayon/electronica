@@ -1,4 +1,4 @@
-import { IsEmail, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 import Users from '../entities/users.entity';
 import { Type } from 'class-transformer';
 import { validationMessageTypes } from '../../../common/constants/index';
